@@ -1,7 +1,7 @@
 import os
 import logging
 
-import datetime
+from datetime import MINYEAR, datetime, timedelta
 
 from urllib.parse import urlparse, parse_qs
 
@@ -17,19 +17,11 @@ class TennisExplorerSpider(scrapy.Spider):
   name = 'tennisexplorer.com'
   allowed_domains = ['tennisexplorer.com']
 
-  def __init__(self, start_date=None, max_future_date=None, stop_watermark=None, log=logger):
-    self.start_date = (
-      datetime.fromisoformat(start_date) if start_date is not None 
-      else datetime.date.today()
-    )
-    self.stop_watermark = (
-      datetime.fromisoformat(stop_watermark) if stop_watermark is not None
-      else None
-    )
-    self.max_future_date = (
-      datetime.fromisoformat(max_future_date) if max_future_date 
-      else datetime.date.today() + datetime.timedelta(days=self.max_future_days)
-    )
+  def __init__(self, start_date=None, stop_watermark=None, start_watermark=None, log=logger):
+    now = datetime.today()
+    self.start_date = start_date or now
+    self.start_watermark = start_watermark or datetime(MINYEAR, 1, 1)
+    self.stop_watermark = stop_watermark or (now + timedelta(days=self.max_future_days))
     self.log = log
 
   def start_requests(self):
@@ -49,7 +41,7 @@ class TennisExplorerSpider(scrapy.Spider):
     """
     # TODO; put this mapping into the constructor
     endpoint_parsers = {
-      '/results/': self._parse_match_listings,
+      '/results/': self.parse_match_listings,
     }
     url = urlparse(reponse.url)
     parser = endpoint_parsers.get(url.path) 
@@ -58,6 +50,9 @@ class TennisExplorerSpider(scrapy.Spider):
     else:
       self.log.warn(f"Received reponse for path '{url.path}' which is not in the endpoint parsers mapping.")
 
+  def _is_datetime_bounded(self, dt):
+    is_notnull = (dt is not None)
+    return is_notnull and (self.start_watermark <= dt <= self.stop_watermark)
 
   def _parse_match_listings(self, response):
     """
@@ -68,27 +63,21 @@ class TennisExplorerSpider(scrapy.Spider):
       - Requests for listings on other dates
       - Parses match items
     """
-    url = urlparse(reponse.url)
-    query = parser_qs(url.query)
-
-    def _parse_date(qs):
-      y = qs.get('year')
-      m = qs.get('month')
-      d = qs.get('day')
-      if not all(len(y) == 1, len(m) == 1, len(d) == 1):
-        self.log.warn(f"Query string for year was unexpected: {query} in {response.url}")
+    def _parse_date(url):
+      qs = parse_qs(urlparse(url).query)
+      y = qs.get('year', [])
+      m = qs.get('month', [])
+      d = qs.get('day', [])
+      if not all([len(y) == 1, len(m) == 1, len(d) == 1]):
         return None
       try: 
-        return parse(f'{y}-{m}-{d}')
-      except Exception as e:
-        self.log.error(f"Encountered exception {e} when parsing query string '{qs}'")
-
+        return datetime(int(y[0]), int(m[0]), int(d[0])) except Exception as e:
+        self.log.error(f"Encountered exception: '{e}' when parsing query string '{qs}'")
 
     # Retrieve links to the next day; each daily match summary
     # page has a set of 3 navigation links:
     #   '« previous day', 'today', 'next day »'
     for href in response.css('li.dNav a::attr(href)').getall():
-      year_list = query.get('year')
-      if len(year) != 1:
-        continue
-      yield scrapy.Request(response.urljoin(href), self.parse)
+      if self._is_datetime_bounded(_parse_date(href)):
+        self.log.warning(href)
+        yield scrapy.Request(response.urljoin(href), self.parse)

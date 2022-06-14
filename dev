@@ -52,7 +52,8 @@ run() {
     export_env
     script="$ROOT_DIR/bin/dev-$1"
     if [ -x "$script" ]; then
-      "$script"
+      shift
+      "$script" $*
     else
       die "Provided subcommand: '$1' is not valid; no executable script $script"
     fi
