@@ -1,6 +1,6 @@
 # `seeder`
 
-`seeder` is a data scraping and management package for [tennisexplorer.com](tennisexplorer.com).
+`seeder` is a data scraping and management package for [tennisexplorer.com](www.tennisexplorer.com).
 It allows you to periodically scrape and store the player and match data in a structured SQL database.
 
 ## Installation
