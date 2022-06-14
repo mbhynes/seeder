@@ -6,9 +6,9 @@ import pytest
 
 import scrapy
 
-from seeder.spiders import TennisExplorerSpider
+from seeder.spiders.tennis_explorer_spider import TennisExplorerSpider
 
-MODULE = 'seeder.spiders'
+MODULE = 'seeder.spiders.tennis_explorer_spider'
 
 
 class TestTennisExplorerSpider:
