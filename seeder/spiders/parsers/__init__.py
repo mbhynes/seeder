@@ -6,5 +6,5 @@ class Parser(object):
   def parse_items(self, response):
     raise NotImplementedError
 
-  def parse_links(self, response)
+  def parse_links(self, response):
     raise NotImplementedError

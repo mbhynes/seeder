@@ -31,12 +31,12 @@ class TestTennisExplorerSpider:
       })
 
   @pytest.mark.vcr()
-  def test_parse_match_listings(self):
+  def test_parse_results_endpoint(self):
     base_url = "https://www.tennisexplorer.com/results/?type=all&year={year:04d}&month={month:02d}&day={day:02d}"
     url = base_url.format(year=2000, month=3, day=19)
     response = scrapy.http.HtmlResponse(url, body=requests.get(url).content)
     spider = TennisExplorerSpider()
-    results = list(spider._parse_match_listings(response))
+    results = list(spider.parse(response))
 
     # Assert the next set of requests are created
     actual_requests = [r.url for r in results if type(r) is scrapy.Request]

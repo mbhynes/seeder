@@ -12,7 +12,7 @@ import scrapy
 
 from seeder.items import MatchItem
 from seeder.spiders.parsers import Parser
-from seeder.util.numeric import coerce_int, coerce_float, coerce_timedelta
+from seeder.util.numeric import coerce_int, coerce_float, coerce_timedelta, sum_ignore_none
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +26,7 @@ class MatchParser(Parser):
 
   @staticmethod
   def _parse_date_from_qs(url, year='year', month='month', day='day'):
+    dt = None
     try: 
       qs = parse_qs(urlparse(url).query)
       y = qs.get(year, [])
@@ -33,9 +34,8 @@ class MatchParser(Parser):
       d = qs.get(day, [])
       if all([len(y) == 1, len(m) == 1, len(d) == 1]):
         dt = datetime(int(y[0]), int(m[0]), int(d[0]))
-    except Exception as e:
-      dt = None
-    return dt
+    finally:
+      return dt
 
   def _is_datetime_bounded(self, dt):
     is_notnull = (dt is not None)
@@ -142,7 +142,6 @@ class MatchParser(Parser):
           continue
         key = _key_record(row)
         if not key:
-          self.log.warning(f"Could not parse a key from row {n} with text: '{row.text}'")
           continue
         raw_record =  _record_from_row(row, context)
         records[key] = _coerce_record_dtypes(raw_record)
@@ -161,8 +160,14 @@ class MatchParser(Parser):
           'tournament':   left['tournament'],
           'match_at':     left['match_date'] + left['match_time'],
 
-          'is_win_p1':    left['result'] > right['result'],
-          'is_win_p2':    right['result'] > left['result'],
+          'is_win_p1':    (
+                            all([left['result'] is not None, right['result'] is not None])
+                            and left['result'] > right['result']
+                          ),
+          'is_win_p2':    (
+                            all([left['result'] is not None, right['result'] is not None])
+                            and right['result'] > left['result']
+                          ),
 
           'avg_odds_p1':  left['avg_odds_p1'],
           'avg_odds_p2':  left['avg_odds_p2'],

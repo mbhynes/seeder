@@ -60,8 +60,8 @@ class TennisExplorerSpider(scrapy.Spider):
       self.log.warn(f"Received reponse for path '{url.path}' which is not in the endpoint parsers mapping.")
       return
 
-    for item in parser.parse_items(response) 
+    for item in parser.parse_items(response):
       yield item
 
-    for href in parser.parse_links(response) 
+    for href in parser.parse_links(response):
       yield scrapy.Request(response.urljoin(href), self.parse)
