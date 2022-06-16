@@ -174,9 +174,11 @@ class MatchParser(Parser):
         # If this row contains a new header, reset the tournament context for the subsequent rows,
         # and then continue to the next row, which contains match result data. 
         if ' '.join(row.attrs.get('class', [])) == 'head flags':
+          tournament_el = row.find('td', class_='t-name').find('a')
+          tournament_url = tournament_el.attrs.get('href') if tournament_el else None
           context = {
             **global_context,
-            **{'tournament': row.find('td', class_='t-name').find('a').attrs.get('href')},
+            **{'tournament': tournament_url},
           }
           continue
         key = _key_record(row)
