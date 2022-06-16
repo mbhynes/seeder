@@ -39,6 +39,14 @@ class TennisExplorerSpider(scrapy.Spider):
     }
     self.parsers = {endpoint: cls(**ctx) for (endpoint, cls) in self.ENDPOINT_PARSERS.items()}
 
+  @classmethod
+  def from_crawler(cls, crawler):
+    return cls(
+      start_date=crawler.settings.get('SEEDER_START_DATE'),
+      stop_watermark=crawler.settings.get('SEEDER_STOP_WATERMARK'),
+      start_watermark=crawler.settings.get('SEEDER_START_WATERMARK'),
+    )
+
   def start_requests(self):
     url = "https://www.tennisexplorer.com/results/?type=all&year={year}&month={month}&day={day}".format(
       year=self.start_date.strftime('%Y'),

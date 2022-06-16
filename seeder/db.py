@@ -1,35 +1,25 @@
 import logging
 import os
 import sqlalchemy
+from scrapy.utils.project import get_project_settings
+
 from sqlalchemy import select, inspect
 
 logger = logging.getLogger(__name__)
 
 SEEDER_DB_CONN_STR = 'SEEDER_DB_CONN_STR'
 
-# By default, run with a single-threaded pool:
-# http://docs.sqlalchemy.org/en/latest/core/pooling.html#sqlalchemy.pool.SingletonThreadPool
-DEFAULT_ENGINE_ARGS = {
-  'sqlite': {},
-  'mysql': {
-    'connect_args': {
-      "connect_timeout": 1,
-    },
-    'isolation_level': 'READ_COMMITTED',
-    'poolclass': sqlalchemy.pool.StaticPool,
-    'pool_recycle': 5 * 60,
-  }
-}
 
 def get_engine(conn_str=None, **kwargs):
   """
   Create a sqlalchemy engine.
   """
+  engine_args = get_project_settings().get('SEEDER_SQLALCHEMY_ENGINE_ARGS', {})
   conn_str = conn_str or os.getenv('SEEDER_DB_CONN_STR')
   if not conn_str:
     raise ValueError(f"No ${SEEDER_DB_CONN_STR} is set in the environment or provided to get_engine().")
   dialect = conn_str.split(':')[0]
-  _args = dict(DEFAULT_ENGINE_ARGS.get(dialect, {}), **kwargs)
+  _args = dict(engine_args.get(dialect, {}), **kwargs)
   return sqlalchemy.create_engine(conn_str, **_args)
 
 

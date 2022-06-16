@@ -21,8 +21,8 @@ class Base(object):
     default=datetime.datetime.utcnow,
     index=True,
   )
-	updated_at._creation_order = 1000
 	created_at._creation_order = 1000
+	updated_at._creation_order = 1001
   
 
 BaseModel = declarative_base(cls=Base)
