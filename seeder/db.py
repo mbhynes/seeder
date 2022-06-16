@@ -26,10 +26,10 @@ def get_engine(conn_str=None, **kwargs):
   Create a sqlalchemy engine.
   """
   conn_str = conn_str or os.getenv('SEEDER_DB_CONN_STR')
+  if not conn_str:
+    raise ValueError(f"No ${SEEDER_DB_CONN_STR} is set in the environment or provided to get_engine().")
   dialect = conn_str.split(':')[0]
   _args = dict(DEFAULT_ENGINE_ARGS.get(dialect, {}), **kwargs)
-  if not conn_str:
-    raise ValueError(f"No conn_str provided and ${SEEDER_DB_CONN_STR} is not set.")
   return sqlalchemy.create_engine(conn_str, **_args)
 
 
@@ -62,11 +62,7 @@ def upsert_item(item, sessionmaker):
     success = True
   return success 
 
-try:
-  default_engine = get_engine()
-except Exception as e:
-  default_engine = None
-  logger.error(e)
+default_engine = get_engine()
 
 
 class DatabaseMixin(object):
