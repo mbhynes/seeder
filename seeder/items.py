@@ -1,4 +1,4 @@
-from seeder.model import Match
+from seeder.models import Match, Player
 
 import scrapy
 
@@ -14,3 +14,6 @@ def item_subtype_from_model(classname, model):
 
 
 MatchItem = item_subtype_from_model('MatchItem', Match)
+
+# Nb. this is not currently used
+PlayerItem = item_subtype_from_model('PlayerItem', Player)

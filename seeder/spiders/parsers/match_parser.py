@@ -10,7 +10,8 @@ from urllib.parse import urlparse, parse_qs
 from bs4 import BeautifulSoup
 import scrapy
 
-from seeder.items import MatchItem
+from seeder.items import MatchItem, PlayerItem
+from seeder.models import PlayerType
 from seeder.spiders.parsers import Parser
 from seeder.util.numeric import coerce_int, coerce_float, coerce_timedelta, sum_ignore_none
 
@@ -61,11 +62,49 @@ class MatchParser(Parser):
     context = {
       'match_date': self._parse_date_from_qs(response.url), 
     }
-    records = []
+    match_records = []
     tables = soup.find_all('table', class_='result')
     for tab in tables:
-      records += self._parse_match_table_rows(tab, context)
+      match_records += self._parse_match_table_rows(tab, context)
+
+    user_records = self._users_from_match_records(match_records)
+    records = user_records + match_records
     return records
+
+  def _users_from_match_records(self, records):
+    user_records = []
+    for r in records:
+      player_type = r['match_type']
+      for u in (r['p1'], r['p2']):
+        user = {
+          'player_id':    u,
+          'player_type':  player_type,
+          "p1":           None,
+          "p2":           None,
+        }
+        if player_type == PlayerType.double:
+          matches = re.match(r"/doubles-team/([\w\-]+)/([\w\-]+)/", u)
+          if not matches:
+            continue
+          slugs = matches.groups()
+          user.update({
+            'p1': f'/player/{slugs[0]}/',
+            'p2': f'/player/{slugs[1]}/',
+          })
+          user_records.append({
+            'player_id':    f'/player/{slugs[0]}/',
+            'player_type':  PlayerType.single,
+            "p1":           None,
+            "p2":           None,
+          })
+          user_records.append({
+            'player_id':    f'/player/{slugs[1]}/',
+            'player_type':  PlayerType.single,
+            "p1":           None,
+            "p2":           None,
+          })
+        user_records.append(user)
+    return [PlayerItem(r) for r in user_records]
 
   def _parse_match_table_rows(self, soup, global_context=None):
     """
@@ -155,10 +194,11 @@ class MatchParser(Parser):
       for (key, record) in right_records.items():
         left = left_records[key]
         right = right_records[key]
-        merged.append({
+        merged.append(MatchItem({
           'match_id':     left['match_id'],
           'tournament':   left['tournament'],
           'match_at':     left['match_date'] + left['match_time'],
+          'match_type':   PlayerType.from_url(left['player']),
 
           'is_win_p1':    (
                             all([left['result'] is not None, right['result'] is not None])
@@ -189,7 +229,7 @@ class MatchParser(Parser):
           'score3_p2':    right['score3'],
           'score4_p2':    right['score4'],
           'score5_p2':    right['score5'],
-        }) 
+        })) 
       return merged
 
     rows = soup.find_all('tr', class_=['head flags', 'one', 'two'])

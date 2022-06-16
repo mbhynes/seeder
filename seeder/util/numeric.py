@@ -26,5 +26,8 @@ def coerce_timedelta(x, default=timedelta()):
   m = re.match(pattern, x)
   if m is not None:
     hours, minutes = m.groups()
-    result = timedelta(hours=groups[0], minutes=groups[11])
+    result = timedelta(
+      hours=coerce_int(hours, default=0),
+      minutes=coerce_int(minutes, default=0)
+    )
   return result

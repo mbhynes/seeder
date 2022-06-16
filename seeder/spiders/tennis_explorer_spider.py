@@ -23,7 +23,7 @@ class TennisExplorerSpider(scrapy.Spider):
   }
   
   max_future_days = 7
-  name = 'tennisexplorer.com'
+  name = 'tennisexplorer'
   allowed_domains = ['tennisexplorer.com']
 
   def __init__(self, start_date=None, stop_watermark=None, start_watermark=None, log=logger):
