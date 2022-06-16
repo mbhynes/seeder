@@ -63,7 +63,7 @@ DOWNLOAD_DELAY = 3
 # Configure item pipelines
 # See https://docs.scrapy.org/en/latest/topics/item-pipeline.html
 ITEM_PIPELINES = {
-  'seeder.pipelines.SeederPipeline': 300,
+  'seeder.pipelines.DatabasePipeline': 300,
 }
 
 # Enable and configure the AutoThrottle extension (disabled by default)

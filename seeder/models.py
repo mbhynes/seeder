@@ -10,7 +10,6 @@ from sqlalchemy.orm import declarative_base, relationship
 
 
 class Base(object):
-
 	created_at = Column(
     DateTime(),
     default=datetime.datetime.utcnow,
@@ -23,10 +22,10 @@ class Base(object):
     index=True,
   )
 	updated_at._creation_order = 1000
-	created_at._creation_order = 1001
+	created_at._creation_order = 1000
   
 
-BaseModel = declarative_base(Base)
+BaseModel = declarative_base(cls=Base)
 
 
 class PlayerType(enum.Enum):
@@ -50,18 +49,18 @@ class Player(BaseModel):
   name = Column(String)
   player_type = Column(Enum(PlayerType), nullable=False)
 
-  p1 = Column(ForeignKey("players.player_id"), nullable=True)
-  p2 = Column(ForeignKey("players.player_id"), nullable=True)
-  
-  team_members = relationship("Player")
-  matches = relationship("Match", back_populates="player")
+  p1 = Column(String, ForeignKey("players.player_id"), nullable=True)
+  member1 = relationship("Player", foreign_keys=[p1], remote_side=[player_id])
+
+  p2 = Column(String, ForeignKey("players.player_id"), nullable=True)
+  member2 = relationship("Player", foreign_keys=[p2], remote_side=[player_id])
   
 
 class Match(BaseModel):
   __tablename__ = "matches"
   match_id = Column(Integer, primary_key=True)
   tournament = Column(String, nullable=False)
-  match_at = Column(DateTime, nullable=False)
+  match_at = Column(DateTime, nullable=False, index=True)
   match_type = Column(Enum(PlayerType), nullable=False)
 
   is_win_p1 = Column(Boolean, nullable=True)
@@ -70,7 +69,7 @@ class Match(BaseModel):
   avg_odds_p1 = Column(Float, nullable=True)
   avg_odds_p2 = Column(Float, nullable=True)
 
-  p1 = Column(String, ForeignKey('players.player_id'), nullable=False)
+  p1 = Column(String, ForeignKey('players.player_id'), nullable=False, index=True)
   result_p1 = Column(Integer, nullable=True)
   sets_p1 = Column(Integer, nullable=True)
   score1_p1 = Column(Integer, nullable=True)
@@ -79,7 +78,7 @@ class Match(BaseModel):
   score4_p1 = Column(Integer, nullable=True)
   score5_p1 = Column(Integer, nullable=True)
 
-  p2 = Column(String, ForeignKey('players.player_id'), nullable=False)
+  p2 = Column(String, ForeignKey('players.player_id'), nullable=False, index=True)
   result_p2 = Column(Integer, nullable=False)
   sets_p2 = Column(Integer, nullable=False)
   score1_p2 = Column(Integer, nullable=False)
@@ -87,3 +86,6 @@ class Match(BaseModel):
   score3_p2 = Column(Integer, nullable=True)
   score4_p2 = Column(Integer, nullable=True)
   score5_p2 = Column(Integer, nullable=True)
+
+  player1 = relationship("Player", foreign_keys=[p1])
+  player2 = relationship("Player", foreign_keys=[p2])

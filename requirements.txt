@@ -1,3 +1,4 @@
+env
 scrapy
 beautifulsoup4
 sqlalchemy
