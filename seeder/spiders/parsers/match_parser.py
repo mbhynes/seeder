@@ -60,6 +60,7 @@ class MatchParser(Parser):
     soup = BeautifulSoup(response.body, 'html.parser')
     context = {
       'match_date': self._parse_date_from_qs(response.url), 
+      'url':        response.url,
     }
     match_records = []
     tables = soup.find_all('table', class_='result')
@@ -180,7 +181,7 @@ class MatchParser(Parser):
           else:
             # ITF Futures tournaments do not have specific URLs; as a fallback,
             # we take the tag's text and remove non-workd characters from it.
-            tournament_url = re.sub('\W', '',  header_el.text)
+            tournament_url = re.sub(r'[\W]', '',  header_el.text)
           context = {
             **global_context,
             **{'tournament': tournament_url},
@@ -197,46 +198,57 @@ class MatchParser(Parser):
       split_fn = lambda k: k[1] == ''
       left_records = {key[0]: value for (key, value) in records.items() if split_fn(key)}
       right_records = {key[0]: value for (key, value) in records.items() if not split_fn(key)}
+      if len(right_records) != len(left_records):
+        self.logger.warn(
+          f"Detected probable parsing error for url='{global_context.get('url')}\n;"
+          "left records do not match right records during merge:\n"
+          f"\tleft.keys not in right.keys: {left_records.keys() - right_records.keys()}\n"
+          f"\tright.keys not in left.keys: {right_records.keys() - left_records.keys()}"
+        )
       merged = []
-      for (key, record) in right_records.items():
-        left = left_records[key]
-        right = right_records[key]
-        merged.append(MatchItem({
-          'match_id':     left['match_id'],
-          'tournament':   left['tournament'],
-          'match_at':     left['match_date'] + left['match_time'],
-          'match_type':   PlayerType.from_url(left['player']),
+      for (key, left) in left_records.items():
+        try:
+          right = right_records[key]
+          merged.append(MatchItem({
+            'match_id':     left['match_id'],
+            'tournament':   left['tournament'],
+            'match_at':     left['match_date'] + left['match_time'],
+            'match_type':   PlayerType.from_url(left['player']),
 
-          'is_win_p1':    (
-                            all([left['result'] is not None, right['result'] is not None])
-                            and left['result'] > right['result']
-                          ),
-          'is_win_p2':    (
-                            all([left['result'] is not None, right['result'] is not None])
-                            and right['result'] > left['result']
-                          ),
+            'is_win_p1':    (
+                              all([left['result'] is not None, right['result'] is not None])
+                              and left['result'] > right['result']
+                            ),
+            'is_win_p2':    (
+                              all([left['result'] is not None, right['result'] is not None])
+                              and right['result'] > left['result']
+                            ),
 
-          'avg_odds_p1':  left['avg_odds_p1'],
-          'avg_odds_p2':  left['avg_odds_p2'],
+            'avg_odds_p1':  left['avg_odds_p1'],
+            'avg_odds_p2':  left['avg_odds_p2'],
 
-          'p1':           left['player'],
-          'result_p1':    left['result'],
-          'sets_p1':      sum_ignore_none(*[left[f'score{k}'] for k in range(1, 6)]),
-          'score1_p1':    left['score1'],
-          'score2_p1':    left['score2'],
-          'score3_p1':    left['score3'],
-          'score4_p1':    left['score4'],
-          'score5_p1':    left['score5'],
+            'p1':           left['player'],
+            'result_p1':    left['result'],
+            'sets_p1':      sum_ignore_none(*[left[f'score{k}'] for k in range(1, 6)]),
+            'score1_p1':    left['score1'],
+            'score2_p1':    left['score2'],
+            'score3_p1':    left['score3'],
+            'score4_p1':    left['score4'],
+            'score5_p1':    left['score5'],
 
-          'p2':           right['player'],
-          'result_p2':    right['result'],
-          'sets_p2':      sum_ignore_none(*[right[f'score{k}'] for k in range(1, 6)]),
-          'score1_p2':    right['score1'],
-          'score2_p2':    right['score2'],
-          'score3_p2':    right['score3'],
-          'score4_p2':    right['score4'],
-          'score5_p2':    right['score5'],
-        })) 
+            'p2':           right['player'],
+            'result_p2':    right['result'],
+            'sets_p2':      sum_ignore_none(*[right[f'score{k}'] for k in range(1, 6)]),
+            'score1_p2':    right['score1'],
+            'score2_p2':    right['score2'],
+            'score3_p2':    right['score3'],
+            'score4_p2':    right['score4'],
+            'score5_p2':    right['score5'],
+          })) 
+        except Exception as e:
+          self.logger.error(
+            f"Encountered exception '{e}' when merging records for {key} from {global_context.get('url')}"
+          )
       return merged
 
     rows = soup.find_all('tr', class_=['head flags', 'one', 'two'])
