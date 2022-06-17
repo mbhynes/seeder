@@ -27,8 +27,8 @@ class TennisExplorerSpider(scrapy.Spider):
   name = 'tennisexplorer'
   allowed_domains = ['tennisexplorer.com']
 
-  def __init__(self, start_date=None, stop_watermark=None, start_watermark=None, **kwargs):
-    super().__init__(**kwargs)
+  def __init__(self, *args, start_date=None, stop_watermark=None, start_watermark=None, **kwargs):
+    super().__init__(*args, **kwargs)
     today = datetime.fromordinal(date.today().toordinal())
     self.start_date = start_date or today
     self.start_watermark = (
@@ -45,9 +45,10 @@ class TennisExplorerSpider(scrapy.Spider):
       'stop_watermark': self.stop_watermark,
     }
     self.parsers = {endpoint: cls(**ctx) for (endpoint, cls) in self.ENDPOINT_PARSERS.items()}
+    self.logger.info(f"Running {type(self)} spider over watermark span [{self.start_watermark}, {self.stop_watermark}] starting from {self.start_date}.")
 
   @classmethod
-  def from_crawler(cls, crawler):
+  def from_crawler(cls, crawler, *args, **kwargs):
     def _parse_datetime(d):
       if d is None:
         return None
@@ -58,11 +59,15 @@ class TennisExplorerSpider(scrapy.Spider):
           logger.error(f"Failed to parse string '{d}' using datetime.fromisoformat.")
           raise e from None
       return d
-    return cls(
+    spider = super(TennisExplorerSpider, cls).from_crawler(
+      crawler,
+      *args,
       start_date=_parse_datetime(crawler.settings.get('SEEDER_START_DATE')),
       stop_watermark=_parse_datetime(crawler.settings.get('SEEDER_STOP_WATERMARK')),
       start_watermark=_parse_datetime(crawler.settings.get('SEEDER_START_WATERMARK')),
+      **kwargs
     )
+    return spider
 
   def start_requests(self):
     url = "https://www.tennisexplorer.com/results/?type=all&year={year}&month={month}&day={day}".format(
