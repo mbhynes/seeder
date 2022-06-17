@@ -117,7 +117,9 @@ If unset, these will default to a large timerange of `[0001-01-01, now() + 7 day
 
 To manage the database, the start and stop watermarks may be used to populate the tables with minimal requests, e.g.:
   1. **(Initial Backfill)**
+
     - Run an initial backfill to populate the data starting from a fixed point in the past
+
     ```bash
     source .venv/bin/activate
     scrapy crawl tennisexplorer \
@@ -126,8 +128,10 @@ To manage the database, the start and stop watermarks may be used to populate th
     ```
     
   2. **(Incremental Crawl)**
+
     - Every day (suppose), run an incremental crawl using a start watermark that overlaps slightly with the previous crawl's stop watermark
-    - The default values
+    - The default values of the start and stop watermark of `[today - 3 days, today + 7 days]` are intended to be sane defaults for this use case, in which a small overlap is desirable (since we upsert records and wish to capture changes after matches are played & the results are available)
+
     ```bash
     source .venv/bin/activate
     scrapy crawl tennisexplorer

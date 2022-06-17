@@ -22,7 +22,7 @@ class TennisExplorerSpider(scrapy.Spider):
     '/results/': MatchParser,
   }
   
-  default_start_watermark_offset = 1
+  default_start_watermark_offset = 3
   default_stop_watermark_offset = 7
   name = 'tennisexplorer'
   allowed_domains = ['tennisexplorer.com']
