@@ -20,31 +20,39 @@ class TestTennisExplorerSpider:
     assert payload == reference
 
   def test_init_default_args(self):
-    today = datetime.datetime(2000, 1, 1)
-    min_date = datetime.datetime(datetime.MINYEAR, 1, 1)
-    with mock.patch(f'{MODULE}.datetime') as mock_date:
+    to_datetime = lambda d: datetime.datetime.fromordinal(d.toordinal())
+    today = datetime.date(2000, 1, 1)
+    with mock.patch(f'{MODULE}.date') as mock_date:
       mock_date.today.return_value = today
-      mock_date.return_value = min_date
       spider = TennisExplorerSpider()
       self._assert_attributes_equal(spider, {
-        'start_date': today,
-        'start_watermark': min_date,
-        'stop_watermark': today + datetime.timedelta(days=TennisExplorerSpider.max_future_days),
+        'start_date': to_datetime(today),
+        'start_watermark': to_datetime(
+          today - datetime.timedelta(days=TennisExplorerSpider.default_start_watermark_offset)
+        ),
+        'stop_watermark': to_datetime(
+          today + datetime.timedelta(days=TennisExplorerSpider.default_stop_watermark_offset)
+        ),
       })
 
   @pytest.mark.vcr()
   def test_parse_results_endpoint(self):
     base_url = "https://www.tennisexplorer.com/results/?type=all&year={year:04d}&month={month:02d}&day={day:02d}"
-    url = base_url.format(year=2000, month=3, day=19)
+    start_date = datetime.datetime(2000, 3, 19)
+    url = base_url.format(year=start_date.year, month=start_date.month, day=start_date.day)
     response = scrapy.http.HtmlResponse(url, body=requests.get(url).content)
-    spider = TennisExplorerSpider()
+    spider = TennisExplorerSpider(
+      start_date=start_date,
+      start_watermark=start_date - datetime.timedelta(days=1),
+      stop_watermark=start_date + datetime.timedelta(days=1),
+    )
     results = list(spider.parse(response))
 
     # Assert the next set of requests are created
     actual_requests = [r.url for r in results if type(r) is scrapy.Request]
     expected_requests = [
-      base_url.format(year=2000, month=3, day=18),
-      base_url.format(year=2000, month=3, day=20),
+      base_url.format(year=start_date.year, month=start_date.month, day=start_date.day - 1),
+      base_url.format(year=start_date.year, month=start_date.month, day=start_date.day + 1),
     ]
     assert sorted(actual_requests) == sorted(expected_requests)
 

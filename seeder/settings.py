@@ -1,3 +1,4 @@
+import datetime
 import sqlalchemy
 
 BOT_NAME = 'seeder'
@@ -93,3 +94,19 @@ SEEDER_SQLALCHEMY_ENGINE_ARGS = {
     'pool_recycle': 5 * 60,
   }
 }
+
+# Set the date for which to start a match listing crawl.
+# This is the date to submit in the query string to the /results/ endpoint:
+#   https://www.tennisexplorer.com/results/?type=all&year=<YEAR>&month=<MONTH>&day=<DAY>
+# If set to None, this will default to datetime.date.now().
+SEEDER_START_DATE = None
+
+# Set the earliest date for which the /results/ pages should be crawled
+# For backfills, this should be a date in the past from which point data is desired
+# If set to None, this will default to today - 1 day
+SEEDER_START_WATERMARK = None
+
+# Set the latest date for which the /results/ pages should be crawled
+# If set to None, this will default to today + 7 days
+SEEDER_STOP_WATERMARK = None
+

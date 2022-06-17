@@ -3,7 +3,7 @@ import logging
 import os
 import re
 
-from datetime import MINYEAR, datetime, timedelta
+from datetime import MINYEAR, date, datetime, timedelta
 
 from urllib.parse import urlparse, parse_qs
 
@@ -22,15 +22,22 @@ class TennisExplorerSpider(scrapy.Spider):
     '/results/': MatchParser,
   }
   
-  max_future_days = 7
+  default_start_watermark_offset = 1
+  default_stop_watermark_offset = 7
   name = 'tennisexplorer'
   allowed_domains = ['tennisexplorer.com']
 
   def __init__(self, start_date=None, stop_watermark=None, start_watermark=None, log=logger):
-    now = datetime.today()
-    self.start_date = start_date or now
-    self.start_watermark = start_watermark or datetime(MINYEAR, 1, 1)
-    self.stop_watermark = stop_watermark or (now + timedelta(days=self.max_future_days))
+    today = datetime.fromordinal(date.today().toordinal())
+    self.start_date = start_date or today
+    self.start_watermark = (
+      start_watermark 
+      or (today - timedelta(days=self.default_start_watermark_offset))
+    )
+    self.stop_watermark = (
+      stop_watermark 
+      or (today + timedelta(days=self.default_stop_watermark_offset))
+    )
     self.log = log
     ctx = {
       'log': self.log,
@@ -41,10 +48,20 @@ class TennisExplorerSpider(scrapy.Spider):
 
   @classmethod
   def from_crawler(cls, crawler):
+    def _parse_datetime(d):
+      if d is None:
+        return None
+      if type(d) is str:
+        try:
+          return datetime.fromisoformat(d)
+        except ValueError as e:
+          logger.error(f"Failed to parse string '{d}' using datetime.fromisoformat.")
+          raise e from None
+      return d
     return cls(
-      start_date=crawler.settings.get('SEEDER_START_DATE'),
-      stop_watermark=crawler.settings.get('SEEDER_STOP_WATERMARK'),
-      start_watermark=crawler.settings.get('SEEDER_START_WATERMARK'),
+      start_date=_parse_datetime(crawler.settings.get('SEEDER_START_DATE')),
+      stop_watermark=_parse_datetime(crawler.settings.get('SEEDER_STOP_WATERMARK')),
+      start_watermark=_parse_datetime(crawler.settings.get('SEEDER_START_WATERMARK')),
     )
 
   def start_requests(self):

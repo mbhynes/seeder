@@ -12,6 +12,14 @@ git clone git@github.com:mbhynes/seeder.git
 
 2. Set up the `virtualenv` and install the dependencies:
 
+  - This project is short & sweet owing entirely to the great stuff provided by the following dependencies:
+    - [`scrapy`](https://scrapy.org/) for managing the crawler
+    - [`beautifulsoup`](https://www.crummy.com/software/BeautifulSoup/bs4/doc/) for parsing html
+    - [`sqlalchemy`](https://www.sqlalchemy.org/) for the database Object-Relational-Mapper [(ORM)](https://en.wikipedia.org/wiki/Object%E2%80%93relational_mapping)
+    - [`pytest`](https://docs.pytest.org/en/7.1.x/) for writing simple and easy to read tests 
+    - [`pytest-vcr`](https://pytest-vcr.readthedocs.io/en/latest/) for simplifying the testing of code that depends on HTTP requests
+  - The dependencies and `virtualenv` setup is handled by running the `dev` script:
+
 ```bash
 ./dev up
 ```
@@ -20,6 +28,18 @@ git clone git@github.com:mbhynes/seeder.git
 
 ```bash
 ./dev test
+
+dev-test: Thu 16 Jun 2022 17:46:17 EDT: INFO: Running dev-test with env:
+   ROOT_DIR=.
+============================================ test session starts =============================================
+platform darwin -- Python 3.9.10, pytest-7.1.2, pluggy-1.0.0
+rootdir: /Users/mike/src/github.com/mbhynes/seeder
+plugins: vcr-1.0.2
+collected 2 items
+
+tests/seeder/spiders/test_tennis_explorer_spider.py ..                                                 [100%]
+
+============================================= 2 passed in 0.57s ==============================================
 ```
 
 ## Running A Spider
@@ -72,3 +92,44 @@ avg_odds_p2 = 2.28
  updated_at = 2022-06-16 20:41:12.870986
  created_at = 2022-06-16 20:41:12.870989
 ```
+
+## Configuration
+
+### Spider Crawl Configuration
+
+The spider crawl timespan is configured such that only the match `/results/` pages in the datetime interval `[SEEDER_START_WATERMARK, SEEDER_STOP_WATERMARK]` will be crawled and parsed, using the following parameters in `settings.py`:
+```
+import datetime
+
+# Set the date for which to start a match listing crawl.
+# This is the date to submit in the query string to the /results/ endpoint:
+#   https://www.tennisexplorer.com/results/?type=all&year=<YEAR>&month=<MONTH>&day=<DAY>
+SEEDER_START_DATE = datetime.datetime(2022, 1, 1) 
+
+# Set the earliest date for which the /results/ pages should be crawled
+SEEDER_START_WATERMARK = datetime.datetime(2021, 1, 1) 
+
+# Set the latest date for which the /results/ pages should be crawled
+SEEDER_STOP_WATERMARK = datetime.datetime(2022, 1, 1) 
+```
+
+If unset, these will default to a large timerange of `[0001-01-01, now() + 7 days)`.
+
+To manage the database, the start and stop watermarks may be used to populate the tables with minimal requests, e.g.:
+  1. **(Initial Backfill)**
+    - Run an initial backfill to populate the data starting from a fixed point in the past
+    ```bash
+    source .venv/bin/activate
+    scrapy crawl tennisexplorer \
+      -s SEEDER_START_DATE='2020-01-01' \
+      -s SEEDER_START_WATERMARK='2021-01-01' \
+    ```
+    
+  2. **(Incremental Crawl)**
+    - Every day (suppose), run an incremental crawl using a start watermark that overlaps slightly with the previous crawl's stop watermark
+    - The default values
+    ```bash
+    source .venv/bin/activate
+    scrapy crawl tennisexplorer
+    ```
+
