@@ -56,8 +56,6 @@ class TestTennisExplorerSpider:
     ]
     assert sorted(actual_requests) == sorted(expected_requests)
 
-    spider.log.error("Printing results:")
-    spider.log.error([type(r) for r in results])
     # Assert the items have been collected
     actual_records = [dict(r) for r in results if type(r) is MatchItem]
     expected_records = [{

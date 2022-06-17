@@ -27,7 +27,8 @@ class TennisExplorerSpider(scrapy.Spider):
   name = 'tennisexplorer'
   allowed_domains = ['tennisexplorer.com']
 
-  def __init__(self, start_date=None, stop_watermark=None, start_watermark=None, log=logger):
+  def __init__(self, start_date=None, stop_watermark=None, start_watermark=None, **kwargs):
+    super().__init__(**kwargs)
     today = datetime.fromordinal(date.today().toordinal())
     self.start_date = start_date or today
     self.start_watermark = (
@@ -38,9 +39,8 @@ class TennisExplorerSpider(scrapy.Spider):
       stop_watermark 
       or (today + timedelta(days=self.default_stop_watermark_offset))
     )
-    self.log = log
     ctx = {
-      'log': self.log,
+      'logger': self.logger,
       'start_watermark': self.start_watermark,
       'stop_watermark': self.stop_watermark,
     }
@@ -82,7 +82,7 @@ class TennisExplorerSpider(scrapy.Spider):
     url = urlparse(response.url)
     parser = self.parsers.get(url.path) 
     if not parser:
-      self.log.warn(f"Received reponse for path '{url.path}' which is not in the endpoint parsers mapping.")
+      self.logger.warn(f"Received reponse for path '{url.path}' which is not in the endpoint parsers mapping.")
       return
 
     for item in parser.parse_items(response):

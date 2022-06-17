@@ -1,6 +1,5 @@
 from copy import deepcopy
 import logging
-import os
 import re
 
 from datetime import MINYEAR, datetime, timedelta
@@ -20,10 +19,10 @@ logger = logging.getLogger(__name__)
 
 class MatchParser(Parser):
 
-  def __init__(self, start_watermark, stop_watermark, log=logger):
+  def __init__(self, start_watermark, stop_watermark, logger=logger):
     self.start_watermark = start_watermark
     self.stop_watermark = stop_watermark
-    self.log = log
+    self.logger = logger
 
   @staticmethod
   def _parse_date_from_qs(url, year='year', month='month', day='day'):
