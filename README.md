@@ -138,3 +138,8 @@ source .venv/bin/activate
 scrapy crawl tennisexplorer
 ```
 
+
+## Related Work
+
+- [slick](https://github.com/underscorenygren/slick)
+  - This was an interesting find; it's a framework for storing `scrapy` item pipelines in relational databases using `sqlalchemy`. The code is professionallywritten and documented, but not heavily starred/forked.My guess is this was developed commercially over a not insignificant timespan, but then open-sourced in the [initial commit](https://github.com/underscorenygren/slick/commit/c90b9a1383a9afaaa80adedf6598f5180152d926).

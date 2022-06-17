@@ -174,8 +174,14 @@ class MatchParser(Parser):
         # If this row contains a new header, reset the tournament context for the subsequent rows,
         # and then continue to the next row, which contains match result data. 
         if ' '.join(row.attrs.get('class', [])) == 'head flags':
-          tournament_el = row.find('td', class_='t-name').find('a')
-          tournament_url = tournament_el.attrs.get('href') if tournament_el else None
+          header_el = row.find('td', class_='t-name')
+          tournament_href = header_el.find('a')
+          if tournament_href:
+            tournament_url = tournament_href.attrs.get('href')
+          else:
+            # ITF Futures tournaments do not have specific URLs; as a fallback,
+            # we take the tag's text and remove non-workd characters from it.
+            tournament_url = re.sub('\W', '',  header_el.text)
           context = {
             **global_context,
             **{'tournament': tournament_url},

@@ -1,6 +1,8 @@
 import datetime
+import logging
 import sqlalchemy
 
+LOG_LEVEL = logging.INFO
 BOT_NAME = 'seeder'
 
 SPIDER_MODULES = ['seeder.spiders']
