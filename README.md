@@ -117,43 +117,43 @@ If unset or set to `None`, these will default to a sane span of `[today - 3 days
 
 To manage the database, the start and stop watermarks may be used to populate the tables with minimal requests, e.g.:
 
-1. Initial Backfill
+  1. Initial Backfill
 
-  - Run an initial backfill to populate the data starting from a fixed point in the past:
+    - Run an initial backfill to populate the data starting from a fixed point in the past:
 
-```bash
-source .venv/bin/activate
-scrapy crawl tennisexplorer \
-  -s SEEDER_START_WATERMARK='2021-01-01' \
-  -s SEEDER_START_DATE='2021-07-01' \
-```
-  
-  - This should produce output like the following:
+  ```bash
+  source .venv/bin/activate
+  scrapy crawl tennisexplorer \
+    -s SEEDER_START_WATERMARK='2021-01-01' \
+    -s SEEDER_START_DATE='2021-07-01' \
+  ```
+    
+    - This should produce output like the following:
 
-```
- scrapy crawl tennisexplorer -s SEEDER_START_DATE=2021-07-01 -s SEEDER_START_WATERMARK=2021-01-01
-2022-06-17 09:09:16 [scrapy.utils.log] INFO: Scrapy 2.5.0 started (bot: seeder)
-2022-06-17 09:09:16 [tennisexplorer] INFO: Running <class 'seeder.spiders.tennis_explorer_spider.TennisExplorerSpider'> spider over watermark span [2021-01-01 00:00:00, 2022-06-24 00:00:00] starting from 2021-07-01 00:00:00.
-2022-06-17 09:09:16 [scrapy.middleware] INFO: Enabled item pipelines:
-['seeder.pipelines.DatabasePipeline']
-2022-06-17 09:09:16 [scrapy.core.engine] INFO: Spider opened
-2022-06-17 09:09:16 [scrapy.extensions.logstats] INFO: Crawled 0 pages (at 0 pages/min), scraped 0 items (at 0 items/min)
-2022-06-17 09:09:16 [scrapy.extensions.telnet] INFO: Telnet console listening on 127.0.0.1:6023
-2022-06-17 09:10:16 [scrapy.extensions.logstats] INFO: Crawled 16 pages (at 16 pages/min), scraped 13857 items (at 13857 items/min)
-2022-06-17 09:11:16 [scrapy.extensions.logstats] INFO: Crawled 32 pages (at 16 pages/min), scraped 30894 items (at 17037 items/min)
-...
-```
+  ```
+   scrapy crawl tennisexplorer -s SEEDER_START_DATE=2021-07-01 -s SEEDER_START_WATERMARK=2021-01-01
+  2022-06-17 09:09:16 [scrapy.utils.log] INFO: Scrapy 2.5.0 started (bot: seeder)
+  2022-06-17 09:09:16 [tennisexplorer] INFO: Running <class 'seeder.spiders.tennis_explorer_spider.TennisExplorerSpider'> spider over watermark span [2021-01-01 00:00:00, 2022-06-24 00:00:00] starting from 2021-07-01 00:00:00.
+  2022-06-17 09:09:16 [scrapy.middleware] INFO: Enabled item pipelines:
+  ['seeder.pipelines.DatabasePipeline']
+  2022-06-17 09:09:16 [scrapy.core.engine] INFO: Spider opened
+  2022-06-17 09:09:16 [scrapy.extensions.logstats] INFO: Crawled 0 pages (at 0 pages/min), scraped 0 items (at 0 items/min)
+  2022-06-17 09:09:16 [scrapy.extensions.telnet] INFO: Telnet console listening on 127.0.0.1:6023
+  2022-06-17 09:10:16 [scrapy.extensions.logstats] INFO: Crawled 16 pages (at 16 pages/min), scraped 13857 items (at 13857 items/min)
+  2022-06-17 09:11:16 [scrapy.extensions.logstats] INFO: Crawled 32 pages (at 16 pages/min), scraped 30894 items (at 17037 items/min)
+  ...
+  ```
 
-  
-2. Incremental Crawl
+    
+  2. Incremental Crawl
 
-  - Every day (suppose), run an incremental crawl using a start watermark that overlaps slightly with the previous crawl's stop watermark
-  - The default values of the start and stop watermark of `[today - 3 days, today + 7 days]` are intended to be sane defaults for this use case, in which a small overlap is desirable (since we upsert records and wish to capture changes after matches are played & the results are available)
+    - Every day (suppose), run an incremental crawl using a start watermark that overlaps slightly with the previous crawl's stop watermark
+    - The default values of the start and stop watermark of `[today - 3 days, today + 7 days]` are intended to be sane defaults for this use case, in which a small overlap is desirable (since we upsert records and wish to capture changes after matches are played & the results are available)
 
-```bash
-source .venv/bin/activate
-scrapy crawl tennisexplorer
-```
+  ```bash
+  source .venv/bin/activate
+  scrapy crawl tennisexplorer
+  ```
 
 ## Data Model
 
