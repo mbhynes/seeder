@@ -3,10 +3,14 @@ from datetime import timedelta
 
 def sum_ignore_none(*args):
   result = 0
+  nnz = 0
   for arg in args:
     if arg is not None:
       result += arg
-  return result
+      nnz += 1
+  if nnz > 0:
+    return result
+  return None
 
 def coerce_int(x, default=None):
   try:
