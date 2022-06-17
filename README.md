@@ -155,6 +155,36 @@ source .venv/bin/activate
 scrapy crawl tennisexplorer
 ```
 
+## Data Model
+
+The data model is specified with `sqlalchemy` models in the module [seeder.models](seeder/blob/main/seeder/models.py).
+
+The model is summarized in the below Entity Relational Diagram (ERD), in which the black entities are implemented and the **red** entities are aspirational models that are **not** implemented (but which would be nice to have and possible if the spider were extended).
+
+![Data Model ERD](doc/_static/erd.tennisexplorer.com.drawio.svg)
+
+The entities in this model are as follows:
+
+  - **Match**
+
+    - Grain: 1 row per scheduled match in the spider's watermark timespan
+    - Source Endpoints: 
+      - [`/results/`](https://www.tennisexplorer.com/results/)
+      - [`/next/`](https://www.tennisexplorer.com/next/)
+    - A `Match` contains *both* singles and doubles matches in a single table, differentiated by the `match_type` field. This is an relatively opinionated decision, but it has several advantages: (1) it reduces the number of tables to manage [i.e. there is no need for `DoublesMatch`, `SinglesMatch`, `Player`, `Team`] and (2) would still correctly handle weird shit like [Canadian doubles](https://en.wikipedia.org/wiki/Canadian_doubles) if you were ever so inclined to want that in your database. Some people just have more fun.
+    - Currently the spider just walks linearly from the `/results/` page for the `$SEEDER_START_DATE`. (And naturally You could just grab the html with a basic `curl` command like
+     ```curl -O https://www.tennisexplorer.com/results/?type=all&year=2022&month=01&day=[1-31]```
+      and then parse the html, but this won't scale very well in terms of human effort if you want to periodically and incrementally crawl, inspect error logs, manage schemas, etc...) 
+
+
+  - **Player**
+
+    - Grain: 1 row per player **or** team that has had at least 1 match in the spider's watermark timespan
+    - Source Endpoints: 
+      - [`/player/`](https://www.tennisexplorer.com/player/)
+      - [`/doubles-team/`](https://www.tennisexplorer.com/doubles-team/)
+    - A `Player` record may be either a `PlayerType.single` or `PlayerType.double`, in which latter case the members of the doubles team may be retrieved with the self-referential foreign keys `p1` and `p2`. No attempt is made to order these, since we preserve the ordering from the `/doubles-team/` endpoint. 
+    - Please note that we currently don't crawl the `/player/` or `/doubles-team/` endpoints directly; we issue a skeleton record to maintain referential integrityj
 
 ## Related Work
 
