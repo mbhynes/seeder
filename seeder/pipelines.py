@@ -7,9 +7,8 @@ logger = logging.getLogger(__name__)
 
 class DatabasePipeline(DatabaseMixin):
 
-  def __init__(self, engine=default_engine, log=logger):
+  def __init__(self, engine=default_engine):
     super().__init__(engine=engine)
-    self.log = logger
 
   def open_spider(self, spider):
     self.create_all(BaseModel)
@@ -18,7 +17,7 @@ class DatabasePipeline(DatabaseMixin):
     try:
       success = upsert_item(item, self.sessionmaker)
       if not success:
-        raise ValueErorr(f"Failed to upsert item: {item}")
+        raise ValueError(f"Failed to upsert item: {item}")
     except Exception as e:
-      self.log.error(f"Encountered exception '{e}' when upserting {item}")
+      spider.logger.error(f"Encountered exception '{e}' when upserting {item}")
     return item
