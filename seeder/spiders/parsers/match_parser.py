@@ -216,34 +216,36 @@ class MatchParser(Parser):
             'match_type':   PlayerType.from_url(left['player']),
 
             'is_win_p1':    (
-                              all([left['result'] is not None, right['result'] is not None])
-                              and left['result'] > right['result']
-                            ),
+                left['result'] > right['result'] 
+                if all([left.get('result') is not None, right.get('result') is not None])
+                else None
+              ),
             'is_win_p2':    (
-                              all([left['result'] is not None, right['result'] is not None])
-                              and right['result'] > left['result']
-                            ),
+                right['result'] > left['result'] 
+                if all([left.get('result') is not None, right.get('result') is not None])
+                else None
+              ),
 
-            'avg_odds_p1':  left['avg_odds_p1'],
-            'avg_odds_p2':  left['avg_odds_p2'],
+            'avg_odds_p1':  left.get('avg_odds_p1'),
+            'avg_odds_p2':  left.get('avg_odds_p2'),
 
             'p1':           left['player'],
-            'result_p1':    left['result'],
-            'sets_p1':      sum_ignore_none(*[left[f'score{k}'] for k in range(1, 6)]),
-            'score1_p1':    left['score1'],
-            'score2_p1':    left['score2'],
-            'score3_p1':    left['score3'],
-            'score4_p1':    left['score4'],
-            'score5_p1':    left['score5'],
+            'result_p1':    left.get('result'),
+            'sets_p1':      sum_ignore_none(*[left.get(f'score{k}') for k in range(1, 6)]),
+            'score1_p1':    left.get('score1'),
+            'score2_p1':    left.get('score2'),
+            'score3_p1':    left.get('score3'),
+            'score4_p1':    left.get('score4'),
+            'score5_p1':    left.get('score5'),
 
             'p2':           right['player'],
-            'result_p2':    right['result'],
-            'sets_p2':      sum_ignore_none(*[right[f'score{k}'] for k in range(1, 6)]),
-            'score1_p2':    right['score1'],
-            'score2_p2':    right['score2'],
-            'score3_p2':    right['score3'],
-            'score4_p2':    right['score4'],
-            'score5_p2':    right['score5'],
+            'result_p2':    right.get('result'),
+            'sets_p2':      sum_ignore_none(*[right.get(f'score{k}') for k in range(1, 6)]),
+            'score1_p2':    right.get('score1'),
+            'score2_p2':    right.get('score2'),
+            'score3_p2':    right.get('score3'),
+            'score4_p2':    right.get('score4'),
+            'score5_p2':    right.get('score5'),
           })) 
         except Exception as e:
           self.logger.error(

@@ -105,7 +105,7 @@ SEEDER_START_DATE = None
 
 # Set the earliest date for which the /results/ pages should be crawled
 # For backfills, this should be a date in the past from which point data is desired
-# If set to None, this will default to today - 1 day
+# If set to None, this will default to today - 3 days
 SEEDER_START_WATERMARK = None
 
 # Set the latest date for which the /results/ pages should be crawled

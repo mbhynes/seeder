@@ -3,7 +3,7 @@ import enum
 
 from urllib.parse import urlparse
 
-from sqlalchemy import Table, ForeignKey, Column
+from sqlalchemy import ForeignKey, Column
 from sqlalchemy import Integer, String, Boolean, DateTime, Float, Enum
 
 from sqlalchemy.orm import declarative_base, relationship

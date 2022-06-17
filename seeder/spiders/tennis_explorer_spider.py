@@ -20,6 +20,7 @@ class TennisExplorerSpider(scrapy.Spider):
 
   ENDPOINT_PARSERS = {
     '/results/': MatchParser,
+    '/next/': MatchParser,
   }
   
   default_start_watermark_offset = 3
@@ -27,7 +28,7 @@ class TennisExplorerSpider(scrapy.Spider):
   name = 'tennisexplorer'
   allowed_domains = ['tennisexplorer.com']
 
-  def __init__(self, *args, start_date=None, stop_watermark=None, start_watermark=None, **kwargs):
+  def __init__(self, *args, start_date=None, start_watermark=None, stop_watermark=None, **kwargs):
     super().__init__(*args, **kwargs)
     today = datetime.fromordinal(date.today().toordinal())
     self.start_date = start_date or today
@@ -63,8 +64,8 @@ class TennisExplorerSpider(scrapy.Spider):
       crawler,
       *args,
       start_date=_parse_datetime(crawler.settings.get('SEEDER_START_DATE')),
-      stop_watermark=_parse_datetime(crawler.settings.get('SEEDER_STOP_WATERMARK')),
       start_watermark=_parse_datetime(crawler.settings.get('SEEDER_START_WATERMARK')),
+      stop_watermark=_parse_datetime(crawler.settings.get('SEEDER_STOP_WATERMARK')),
       **kwargs
     )
     return spider
