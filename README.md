@@ -1,7 +1,9 @@
 # `seeder`
 
 `seeder` is a data scraping and management package for [tennisexplorer.com](https://www.tennisexplorer.com).
-It allows you to periodically scrape and store the player and match data in a structured SQL database.
+It allows you to periodically scrape and store the player and match data in a relational SQL database.
+
+![Example Scraping Workflow](doc/_static/seeder.gif)
 
 ## Installation
 
@@ -12,10 +14,10 @@ git clone git@github.com:mbhynes/seeder.git
 
 2. **Set up the `virtualenv` and install the dependencies:**
 
+The dependencies and `virtualenv` setup is handled by running the `dev` script:
 ```bash
 ./dev up
 ```
-
 
 3. **Check that the package passes its tests:**
 
@@ -193,5 +195,4 @@ The entities in this model are as follows:
   - [`sqlalchemy`](https://www.sqlalchemy.org/) for the database Object-Relational-Mapper [(ORM)](https://en.wikipedia.org/wiki/Object%E2%80%93relational_mapping)
   - [`pytest`](https://docs.pytest.org/en/7.1.x/) for writing simple and easy to read tests 
   - [`pytest-vcr`](https://pytest-vcr.readthedocs.io/en/latest/) for simplifying the testing of code that depends on HTTP requests
-- The dependencies and `virtualenv` setup is handled by running the `dev` script:
 
