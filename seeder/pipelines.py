@@ -15,7 +15,7 @@ class DatabasePipeline(DatabaseMixin):
 
   def process_item(self, item, spider):
     try:
-      success = upsert_item(item, self.sessionmaker)
+      success = upsert_item(self.sessionmaker, item)
       if not success:
         raise ValueError(f"Failed to upsert item: {item}")
     except Exception as e:

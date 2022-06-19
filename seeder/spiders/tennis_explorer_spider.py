@@ -2,6 +2,7 @@ from copy import deepcopy
 import logging
 import os
 import re
+import uuid
 
 from datetime import MINYEAR, date, datetime, timedelta
 
@@ -30,6 +31,7 @@ class TennisExplorerSpider(scrapy.Spider):
 
   def __init__(self, *args, start_date=None, start_watermark=None, stop_watermark=None, **kwargs):
     super().__init__(*args, **kwargs)
+    self.crawl_id = uuid.uuid4()
     today = datetime.fromordinal(date.today().toordinal())
     self.start_date = start_date or today
     self.start_watermark = (
