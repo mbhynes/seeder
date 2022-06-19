@@ -7,6 +7,9 @@ from seeder.models import BaseModel, Crawl, CrawledUrl
 
 
 class UrlCacheMiddleware(DatabaseMixin):
+  """
+  Populate a crawl & URL metadata table of when pages have been crawled 
+  """
 
   def __init__(self, engine=default_engine):
     super().__init__(engine=engine)
