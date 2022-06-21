@@ -94,8 +94,39 @@ class MatchDetailParser(Parser):
     bookmaker = soup.find("td").find("span", class_="t").next_element
     odds_divs = soup.find_all("div", class_="odds-in")
     if len(odds_divs) != 2:
-      self.logger.error(f"Expected 2 odds change div columns for {bookmaker} but found {len(odds_change_divs)}")
+      self.logger.error(
+        f"Expected 2 odds change div columns for {bookmaker} but found {len(odds_change_divs)}"
+      )
       return None
+
+    def _merge_odds_series(odds):
+      issue_timestamps = set([o['issued_at'] for o in odds[0]] + [o['issued_at'] for o in odds[1]])
+      sorted_odds = [
+        sorted(odds[0], key=lambda r: r['issued_at']),
+        sorted(odds[1], key=lambda r: r['issued_at']),
+      ]
+      last_vals = [None, None]
+      k_last = [0, 0]
+      records = []
+      for ts in sorted(issue_timestamps):
+        # Increment the time index for each player. Since the odds for each side of the line
+        # maybe updated at different timestamps, this is a convoluted way of performing a
+        # full outer join & a forward fill on the series.
+        for p in range(len(sorted_odds)):
+          if sorted_odds[p][k_last[p]].get('issued_at') == ts:
+            last_vals[p] = sorted_odds[p][k_last[p]].get('odds') 
+            k_last[p] = min(k_last[p] + 1, len(sorted_odds[p]) - 1)
+
+        record = {
+          'issued_at': ts,
+          'issued_by': bookmaker,
+          'odds_p1': last_vals[0],
+          'odds_p2': last_vals[1],
+        }
+        records.append(record)
+
+      return records
+
     odds = [
       [],
       [],
@@ -123,27 +154,5 @@ class MatchDetailParser(Parser):
           'issued_at': context.get('match_at'),
           'odds': coerce_float(div.text),
         })
-
-    records = []
-    k_last = [0, 0]
-    # Loop over the parsed odds for each player and merge the lists
-    issue_timestamps = set([o['issued_at'] for o in odds[0]] + [o['issued_at'] for o in odds[1]])
-    for ts in sorted(issue_timestamps):
-      k1 = k_last[0]
-      k2 = k_last[1]
-      record = {
-        'issued_at': ts,
-        'issued_by': bookmaker,
-        'odds_p1': odds[0][k1].get('odds'),
-        'odds_p2': odds[1][k2].get('odds'),
-      }
-      # Increment the time index for each player. Since the odds for each side of the line
-      # maybe updated at different timestamps, this is a convoluted way of performing a
-      # full outer join on the series.
-      for p in range(2):
-        if odds[p][k_last[p]].get('issued_at') == ts:
-          k_last[p] += 1
-
-      records.append(record)
-    
-    return records
+   
+    return _merge_odds_series(odds)
