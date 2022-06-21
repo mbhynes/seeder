@@ -24,9 +24,8 @@ def coerce_float(x, default=None):
   except ValueError:
     return default
 
-def coerce_timedelta(x, default=timedelta()):
+def coerce_timedelta(x, pattern=r"([01][0-9]|2[0-3]):([0-5][0-9])", default=timedelta()):
   result = default
-  pattern = r"([0-2][0-3]):([0-5][0-5])"
   m = re.match(pattern, x)
   if m is not None:
     hours, minutes = m.groups()

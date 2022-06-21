@@ -7,8 +7,8 @@ logger = logging.getLogger(__name__)
 
 class DatabasePipeline(DatabaseMixin):
 
-  def __init__(self, engine=default_engine):
-    super().__init__(engine=engine)
+  def __init__(self, engine=default_engine, **kwargs):
+    super().__init__(engine=engine, **kwargs)
 
   def open_spider(self, spider):
     self.create_all(BaseModel)

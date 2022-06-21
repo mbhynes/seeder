@@ -1,3 +1,4 @@
+import os
 import datetime
 import requests
 
@@ -5,6 +6,8 @@ from unittest import mock
 import pytest
 
 import scrapy
+
+os.environ['SEEDER_DB_CONN_STR'] = 'sqlite:///:memory:'
 
 from seeder.spiders.tennis_explorer_spider import TennisExplorerSpider
 from seeder.models import PlayerType
