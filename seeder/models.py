@@ -92,6 +92,10 @@ class CrawledUrl(BaseModel):
 
   url_id = Column(UUIDType(binary=True), primary_key=True, default=uuid.uuid4)
   url = Column(String, nullable=False, index=True)
+  netloc = Column(String)
+  path = Column(String)
+  params = Column(String)
+  query = Column(String)
   is_crawled = Column(Boolean, default=False, nullable=False)
   last_crawled_at = Column(DateTime, nullable=True)
   last_crawl_id = Column(UUIDType(binary=True), ForeignKey("crawls.crawl_id"), nullable=True)
@@ -104,9 +108,13 @@ class CrawledUrl(BaseModel):
 
   @classmethod
   def insert(cls, session, url):
+    parsed = urlparse(url)
     return upsert_dict(session, cls, {
       'url_id': cls.surrogate_key(url),
       'url': url,
+      'netloc': parsed.netloc or None,
+      'path': parsed.path or None,
+      'params': parsed.params or None,
     })
 
   @classmethod
