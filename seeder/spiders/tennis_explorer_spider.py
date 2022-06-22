@@ -21,9 +21,21 @@ logger = logging.getLogger(__name__)
 class TennisExplorerSpider(scrapy.Spider):
 
   ENDPOINT_PARSERS = {
-    '/results/': MatchResultParser,
-    '/next/': MatchResultParser,
-    '/match-detail/': MatchDetailParser,
+    '/results/': {
+      'parser': MatchResultParser,
+      'parser_kwargs': {},
+      'request_kwargs': {'priority': 1},
+    },
+    '/next/': {
+      'parser': MatchResultParser,
+      'parser_kwargs': {},
+      'request_kwargs': {'priority': 1},
+    },
+    '/match-detail/': {
+      'parser': MatchDetailParser,
+      'parser_kwargs': {},
+      'request_kwargs': {'priority': 0},
+    },
   }
   
   default_start_watermark_offset = 3
@@ -49,8 +61,11 @@ class TennisExplorerSpider(scrapy.Spider):
       'start_watermark': self.start_watermark,
       'stop_watermark': self.stop_watermark,
     }
-    exclude_endpoints = exclude_endpoints or set()
-    self.parsers = {endpoint: cls(**ctx) for (endpoint, cls) in (self.ENDPOINT_PARSERS.items() - set(exclude_endpoints))}
+    self.parsers = {
+      endpoint: config['parser'](**ctx, **config.get('parser_kwargs', {})) 
+      for (endpoint, config) in self.ENDPOINT_PARSERS.items()
+      if endpoint not in (exclude_endpoints or set())
+    }
     self.logger.info(f"Running {type(self)} spider over watermark span [{self.start_watermark}, {self.stop_watermark}] starting from {self.start_date}.")
 
   @classmethod
@@ -107,4 +122,6 @@ class TennisExplorerSpider(scrapy.Spider):
       yield item
 
     for href in parser.parse_links(response):
-      yield scrapy.Request(response.urljoin(href), self.parse)
+      endpoint = urlparse(href).path
+      request_kwargs = self.ENDPOINT_PARSERS.get(endpoint, {}).get('request_kwargs', {})
+      yield scrapy.Request(response.urljoin(href), self.parse, **request_kwargs)
