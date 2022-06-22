@@ -1,6 +1,7 @@
-from seeder.models import Match, Player
+from seeder.models import Match, MatchOdds, Player
 
 import scrapy
+
 
 def item_from_model(classname, model):
   """
@@ -12,9 +13,12 @@ def item_from_model(classname, model):
     for col in colnames
   }
   attr_names['__model__'] = model
-  attr_names['to_model'] = lambda obj: obj.__model__(**dict(obj))
+  attr_names['make'] = lambda obj: obj.__model__.make(**dict(obj))
+  attr_names['make_dependencies'] = lambda obj: obj.__model__.make_dependencies(**dict(obj))
+  attr_names['make_with_dependencies'] = lambda obj: obj.__model__.make_with_dependencies(**dict(obj))
   return type(classname, (scrapy.Item,), attr_names) 
 
 
 MatchItem = item_from_model('MatchItem', Match)
+MatchOddsItem = item_from_model('MatchOddsItem', MatchOdds)
 PlayerItem = item_from_model('PlayerItem', Player)

@@ -26,7 +26,7 @@ def get_engine(conn_str=None, **kwargs):
   _args = dict(engine_args.get(dialect, {}), **kwargs)
   return sqlalchemy.create_engine(conn_str, **_args)
 
-def upsert_record(sessionmaker, model, record):
+def upsert_dict(sessionmaker, model, record):
   """
   Upsert a dictionary-like record to a row of the provided model. 
   """
@@ -49,6 +49,12 @@ def upsert_record(sessionmaker, model, record):
     success = True
   return success 
 
+def upsert_record(sessionmaker, record):
+  """
+  Upsert an ORM instance to the database.
+  """
+  return upsert_dict(sessionmaker, type(record), record.to_partial_dict())
+
 def upsert_item(sessionmaker, item):
   """
   Upsert (insert or update) an item to the database. 
@@ -57,7 +63,7 @@ def upsert_item(sessionmaker, item):
   which will be used to construct a primary key set and retrieve the
   record to update, if it exists, or create it.
   """
-  return upsert_record(sessionmaker, item.__model__, dict(item))
+  return upsert_dict(sessionmaker, item.__model__, dict(item))
 
 
 default_engine = get_engine()

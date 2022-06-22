@@ -21,7 +21,7 @@ class UrlCacheMiddleware(DatabaseMixin):
     return middleware
 
   def process_spider_input(self, response, spider):
-    CrawledUrl.add(self.sessionmaker, response.url)
+    CrawledUrl.insert(self.sessionmaker, response.url)
     return None
 
   def process_spider_output(self, response, result, spider):
@@ -31,4 +31,4 @@ class UrlCacheMiddleware(DatabaseMixin):
 
   def spider_opened(self, spider):
     self.create_all(BaseModel)
-    Crawl.add(self.sessionmaker, spider)
+    Crawl.insert(self.sessionmaker, spider)

@@ -1,5 +1,6 @@
 scrapy
 beautifulsoup4
+lxml
 sqlalchemy
 sqlalchemy-utils
 pytest

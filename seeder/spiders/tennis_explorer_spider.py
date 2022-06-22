@@ -12,7 +12,8 @@ from bs4 import BeautifulSoup
 import scrapy
 
 from seeder.items import MatchItem
-from seeder.spiders.parsers.match_parser import MatchParser
+from seeder.spiders.parsers.match_result_parser import MatchResultParser
+from seeder.spiders.parsers.match_detail_parser import MatchDetailParser
 
 logger = logging.getLogger(__name__)
 
@@ -20,8 +21,9 @@ logger = logging.getLogger(__name__)
 class TennisExplorerSpider(scrapy.Spider):
 
   ENDPOINT_PARSERS = {
-    '/results/': MatchParser,
-    '/next/': MatchParser,
+    '/results/': MatchResultParser,
+    '/next/': MatchResultParser,
+    '/match-detail/': MatchDetailParser,
   }
   
   default_start_watermark_offset = 3

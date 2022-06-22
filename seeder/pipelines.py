@@ -14,10 +14,12 @@ class DatabasePipeline(DatabaseMixin):
     self.create_all(BaseModel)
 
   def process_item(self, item, spider):
+    records = item.make_with_dependencies()
     try:
-      success = upsert_item(self.sessionmaker, item)
+      for r in records:
+        success = upsert_record(self.sessionmaker, r)
       if not success:
-        raise ValueError(f"Failed to upsert item: {item}")
+        raise ValueError(f"Failed to upsert record '{r}' created by item: {item}")
     except Exception as e:
       spider.logger.error(f"Encountered exception '{e}' when upserting {item}")
     return item

@@ -17,7 +17,7 @@ from seeder.util.numeric import coerce_int, coerce_float, coerce_timedelta, sum_
 logger = logging.getLogger(__name__)
 
 
-class MatchParser(Parser):
+class MatchResultParser(Parser):
 
   def __init__(self, start_watermark, stop_watermark, logger=logger):
     self.start_watermark = start_watermark
@@ -81,45 +81,7 @@ class MatchParser(Parser):
     for tab in tables:
       match_records += self._parse_match_table_rows(tab, context)
 
-    # user_records = self._users_from_match_records(match_records)
-    # records = user_records + match_records
-    # return records
     return match_records
-
-  # def _users_from_match_records(self, records):
-  #   user_records = []
-  #   for r in records:
-  #     player_type = r['match_type']
-  #     for u in (r['p1'], r['p2']):
-  #       user = {
-  #         'player_id':    u,
-  #         'player_type':  player_type,
-  #         "p1":           None,
-  #         "p2":           None,
-  #       }
-  #       if player_type == PlayerType.double:
-  #         matches = re.match(r"/doubles-team/([\w\-]+)/([\w\-]+)/", u)
-  #         if not matches:
-  #           continue
-  #         slugs = matches.groups()
-  #         user.update({
-  #           'p1': f'/player/{slugs[0]}/',
-  #           'p2': f'/player/{slugs[1]}/',
-  #         })
-  #         user_records.append({
-  #           'player_id':    f'/player/{slugs[0]}/',
-  #           'player_type':  PlayerType.single,
-  #           "p1":           None,
-  #           "p2":           None,
-  #         })
-  #         user_records.append({
-  #           'player_id':    f'/player/{slugs[1]}/',
-  #           'player_type':  PlayerType.single,
-  #           "p1":           None,
-  #           "p2":           None,
-  #         })
-  #       user_records.append(user)
-  #   return [PlayerItem(r) for r in user_records]
 
   def _parse_match_table_rows(self, soup, global_context=None):
     """
@@ -149,8 +111,8 @@ class MatchParser(Parser):
           record[key] = col.next_element
         elif (cls == '') and (k == ncols):
           match_url = col.find('a').attrs.get('href')
-          match_id = parse_qs(urlparse(match_url).query).get('id')[0]
-          record['match_id'] = match_id
+          match_number = parse_qs(urlparse(match_url).query).get('id')[0]
+          record['match_number'] = match_number
       return record
 
     def _key_record(row):
@@ -167,7 +129,7 @@ class MatchParser(Parser):
     def _coerce_record_dtypes(record):
       fn_map = {
         'match_time':   coerce_timedelta,
-        'match_id':     coerce_int,
+        'match_number':     coerce_int,
         'result':       coerce_int,
         'score1':       coerce_int,
         'score2':       coerce_int,
@@ -225,7 +187,7 @@ class MatchParser(Parser):
         try:
           right = right_records[key]
           merged.append(MatchItem({
-            'match_id':     left['match_id'],
+            'match_number': left['match_number'],
             'tournament':   left['tournament'],
             'match_at':     left['match_date'] + left['match_time'],
             'match_type':   PlayerType.from_url(left['player']),
