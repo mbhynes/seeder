@@ -14,6 +14,7 @@ import scrapy
 from seeder.items import MatchItem
 from seeder.parsers.match_result_parser import MatchResultParser
 from seeder.parsers.match_detail_parser import MatchDetailParser
+from seeder.util.urls import update_query
 
 logger = logging.getLogger(__name__)
 
@@ -98,7 +99,7 @@ class TennisExplorerSpider(scrapy.Spider):
     return spider
 
   def start_requests(self):
-    url = "https://www.tennisexplorer.com/results/?type=all&year={year}&month={month}&day={day}".format(
+    url = "https://www.tennisexplorer.com/results/?type=all&year={year}&month={month}&day={day}&timezone=+0".format(
       year=self.start_date.strftime('%Y'),
       month=self.start_date.strftime('%m'),
       day=self.start_date.strftime('%d'),
@@ -124,4 +125,5 @@ class TennisExplorerSpider(scrapy.Spider):
     for href in parser.parse_links(response):
       endpoint = urlparse(href).path
       request_kwargs = self.ENDPOINT_PARSERS.get(endpoint, {}).get('request_kwargs', {})
-      yield scrapy.Request(response.urljoin(href), self.parse, **request_kwargs)
+      url = update_query(response.urljoin(href), {'timezone': '+0'}) # UTC timestamps only
+      yield scrapy.Request(url, self.parse, **request_kwargs)

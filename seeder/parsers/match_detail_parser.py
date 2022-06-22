@@ -49,7 +49,8 @@ class MatchDetailParser(Parser):
         default=None
       )
       if not match_time:
-        raise ValueError(f"Failed to convert the match time '{match_time_text}' to timedelta for {response.url}")
+        self.logger.error(f"Failed to convert the match time '{match_time_text}' to timedelta for {response.url}")
+        match_time = datetime.timedelta()
 
       return match_date + match_time
 

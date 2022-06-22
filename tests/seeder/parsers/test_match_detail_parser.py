@@ -13,7 +13,7 @@ class TestMatchDetailParser:
 
   @pytest.mark.vcr()
   def test_parse_moneyline_odds_items(self):
-    url = "https://www.tennisexplorer.com/match-detail/?id=2121735"
+    url = "https://www.tennisexplorer.com/match-detail/?id=2121735&timezone=+0"
     response = scrapy.http.HtmlResponse(url, body=requests.get(url).content)
     parser = MatchDetailParser()
 
@@ -27,7 +27,7 @@ class TestMatchDetailParser:
       {
         'match_number': 2121735,
         'issued_by': '188bet',
-        'issued_at': datetime.datetime(2022, 6, 19, 15, 25), 
+        'issued_at': datetime.datetime(2022, 6, 19, 45, 25), 
         'index': 1,
         'index_rev': 1,
         'is_opening': False, # Since there is no issue timestamp provided, this can't be treated as "opening"
