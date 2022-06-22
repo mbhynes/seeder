@@ -1,4 +1,3 @@
-from copy import deepcopy
 import logging
 import re
 
@@ -9,8 +8,9 @@ from urllib.parse import urlparse, parse_qs
 from bs4 import BeautifulSoup
 import scrapy
 
+from seeder.items import MatchOddsItem
 from seeder.spiders.parsers import Parser
-from seeder.util.numeric import coerce_float, coerce_timedelta
+from seeder.util.numeric import coerce_float, coerce_int, coerce_timedelta
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +27,7 @@ class MatchDetailParser(Parser):
     """
     Parse a match results table into an iterable of items.
     """
-    return self.parse_moneyline_odds_items(response, global_context={})
+    return self._parse_moneyline_odds_items(response, global_context={})
 
   def _parse_match_timestamp(self, response):
     try:
@@ -38,7 +38,7 @@ class MatchDetailParser(Parser):
       if not match_time_text:
         raise ValueError(f"Could not retrieve a match start time from {response.url}")
 
-      if match_date_text == 'TODAY':
+      if match_date_text.lower().strip() == 'today':
         match_date = datetime.datetime.fromordinal(datetime.date.today().toordinal())
       else:
         match_date = datetime.datetime.strptime(match_date_text, '%d.%m.%Y')
@@ -68,6 +68,7 @@ class MatchDetailParser(Parser):
     change for each bookmaker as a distinct fact record.
     """
     match_at = self._parse_match_timestamp(response)
+    match_number = coerce_int(parse_qs(urlparse(response.url).query)['id'][0])
     if not match_at:
       return []
     soup = BeautifulSoup(response.body, "html.parser")
@@ -76,9 +77,13 @@ class MatchDetailParser(Parser):
       self.logger.error(f"Could not retrieve the data table from '{response.url}'")
       return []
 
+    context = {
+      'match_at': match_at,
+      'match_number': match_number,
+    }
     items = []
     for row in root_tab.find_all("tr", class_=["one", "two"]):
-      _it = self._parse_match_odds_records(row, context={'match_at': match_at})
+      _it = self._parse_match_odds_records(row, context=context)
       items += _it
     return items
 
@@ -118,8 +123,9 @@ class MatchDetailParser(Parser):
             k_last[p] = min(k_last[p] + 1, len(sorted_odds[p]) - 1)
 
         record = {
-          'issued_at': ts,
+          'match_number': context['match_number'],
           'issued_by': bookmaker,
+          'issued_at': ts,
           'odds_p1': last_vals[0],
           'odds_p2': last_vals[1],
         }
@@ -155,4 +161,5 @@ class MatchDetailParser(Parser):
           'odds': coerce_float(div.text),
         })
    
-    return _merge_odds_series(odds)
+    result = _merge_odds_series(odds)
+    return [MatchOddsItem(**r) for r in result]

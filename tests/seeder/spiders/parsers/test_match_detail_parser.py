@@ -25,21 +25,25 @@ class TestMatchDetailParser:
     ]
     expected_records = [
       {
+        'match_number': 2121735,
         'issued_by': '188bet',
         'issued_at': datetime.datetime(2022, 6, 19, 15, 25), 
         'odds_p1': 1.53,
         'odds_p2': 2.32,
       }, {
-         'issued_by': 'bet365',
+        'match_number': 2121735,
+        'issued_by': 'bet365',
         'issued_at': datetime.datetime(2022, 6, 19, 4, 34), 
         'odds_p1': 1.72,
         'odds_p2': 2.00,
       }, {
+        'match_number': 2121735,
         'issued_by': 'bet365',
         'issued_at': datetime.datetime(2022, 6, 19, 9, 10), 
         'odds_p1': 1.61,
         'odds_p2': 2.20,
       }, {
+        'match_number': 2121735,
         'issued_by': 'bet365',
         'issued_at': datetime.datetime(2022, 6, 19, 9, 51), 
         'odds_p1': 1.53,

@@ -1,5 +1,5 @@
 import logging
-from seeder.db import DatabaseMixin, default_engine, upsert_item
+from seeder.db import DatabaseMixin, default_engine, upsert_record
 from seeder.models import BaseModel
 
 logger = logging.getLogger(__name__)
@@ -18,8 +18,8 @@ class DatabasePipeline(DatabaseMixin):
     for r in records:
       try:
         success = upsert_record(self.sessionmaker, r)
-      if not success:
-        raise ValueError(f"Failed to upsert record '{r}' created by item: {item}")
+        if not success:
+          raise ValueError(f"Failed to upsert record '{r}' created by item: {item}")
       except Exception as e:
         spider.logger.error(f"Encountered exception '{e}' when upserting {item}")
     return item

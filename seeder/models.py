@@ -1,4 +1,3 @@
-from copy import deepcopy
 import datetime
 import enum
 import re
@@ -169,7 +168,7 @@ class Player(BaseModel):
 
   @classmethod
   def make(cls, **kwargs):
-    payload = deepcopy(kwargs)
+    payload = dict(**kwargs)
     slug = kwargs['slug']
     player_type = kwargs.get('player_type', PlayerType.from_url(slug))
     payload['player_id'] = cls.surrogate_key(slug)
@@ -237,7 +236,7 @@ class Match(BaseModel):
 
   @classmethod
   def make(cls, **kwargs):
-    payload = deepcopy(kwargs)
+    payload = dict(**kwargs)
     payload['match_id'] = cls.surrogate_key(kwargs['match_number'])
     payload['p1'] = Player.surrogate_key(kwargs.get('p1'))
     payload['p2'] = Player.surrogate_key(kwargs.get('p2'))
@@ -245,10 +244,12 @@ class Match(BaseModel):
 
   @classmethod
   def make_dependencies(cls, **kwargs):
-    return (
-      Player.make_with_dependencies(slug=kwargs.get('p1'))
-      + Player.make_with_dependencies(slug=kwargs.get('p2')) 
-    )
+    deps = []
+    for player in ['p1', 'p2']:
+      slug = kwargs.get(player)
+      if slug:
+        deps += Player.make_with_dependencies(slug=slug)
+    return deps
 
 
 class MatchOdds(BaseModel):
@@ -256,6 +257,7 @@ class MatchOdds(BaseModel):
 
   match_odds_id = Column(UUIDType(binary=True), primary_key=True, default=uuid.uuid4)
   match_id = Column(UUIDType(binary=True), ForeignKey("matches.match_id"))
+  match_number = Column(Integer, index=True)
   issued_by = Column(String, index=True)
   issued_at = Column(DateTime, index=True)
   odds_p1 = Column(Float)
@@ -270,7 +272,7 @@ class MatchOdds(BaseModel):
 
   @classmethod
   def make(cls, **kwargs):
-    payload = deepcopy(kwargs)
+    payload = dict(**kwargs)
     payload['match_odds_id'] = cls.surrogate_key(
       kwargs['match_number'],
       kwargs['issued_by'],
@@ -281,5 +283,5 @@ class MatchOdds(BaseModel):
   @classmethod
   def make_dependencies(cls, **kwargs):
     return [
-      Match.make_dependencies({'match_number': kwargs['match_number']})
+      Match.make(match_number=kwargs['match_number'])
     ]

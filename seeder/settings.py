@@ -61,7 +61,7 @@ ITEM_PIPELINES = {
 # NOTE: Do *not* hardcode sensitive data in this connection string in production databases;
 # Instead set the $SEEDER_DB_CONN_STR environment variable:
 #   export SEEDER_DB_CONN_STR='mysql://sensitivestring'
-SEEDER_DB_CONN_STR = 'sqlite:///private/seeder.db'
+SEEDER_DB_CONN_STR = 'sqlite:///private/seeder.test.db'
 
 SEEDER_SQLALCHEMY_ENGINE_ARGS = {
   'sqlite': {},
