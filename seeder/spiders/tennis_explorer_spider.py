@@ -65,13 +65,19 @@ class TennisExplorerSpider(scrapy.Spider):
           logger.error(f"Failed to parse string '{d}' using datetime.fromisoformat.")
           raise e from None
       return d
+
+    excludes = crawler.settings.get('SEEDER_EXCLUDE_ENDPOINTS', [])
+    if excludes is str:
+      # Parse commandline-provided strings into a set
+      excludes = set(excludes.split(','))
+      
     spider = super(TennisExplorerSpider, cls).from_crawler(
       crawler,
       *args,
       start_date=_parse_datetime(crawler.settings.get('SEEDER_START_DATE')),
       start_watermark=_parse_datetime(crawler.settings.get('SEEDER_START_WATERMARK')),
       stop_watermark=_parse_datetime(crawler.settings.get('SEEDER_STOP_WATERMARK')),
-      exclude_endpoints=crawler.settings.get('SEEDER_EXCLUDE_ENDPOINTS', '').split(','),
+      exclude_endpoints=excludes,
       **kwargs
     )
     return spider
