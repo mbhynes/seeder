@@ -15,7 +15,7 @@ class TestMatchResultParser:
 
   @pytest.mark.vcr()
   def test_parse_items(self):
-    base_url = "https://www.tennisexplorer.com/results/?type=all&year={year:04d}&month={month:02d}&day={day:02d}"
+    base_url = "https://www.tennisexplorer.com/results/?type=all&year={year:04d}&month={month:02d}&day={day:02d}&timezone=+0"
     start_date = datetime.datetime(2000, 3, 19)
     url = base_url.format(year=start_date.year, month=start_date.month, day=start_date.day)
     response = scrapy.http.HtmlResponse(url, body=requests.get(url).content)

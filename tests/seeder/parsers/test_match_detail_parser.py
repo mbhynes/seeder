@@ -27,7 +27,7 @@ class TestMatchDetailParser:
       {
         'match_number': 2121735,
         'issued_by': '188bet',
-        'issued_at': datetime.datetime(2022, 6, 19, 45, 25), 
+        'issued_at': datetime.datetime(2022, 6, 19, 14, 25), 
         'index': 1,
         'index_rev': 1,
         'is_opening': False, # Since there is no issue timestamp provided, this can't be treated as "opening"
