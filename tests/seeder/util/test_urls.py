@@ -4,3 +4,5 @@ def test_update_query():
   assert update_query('/endpoint/', None) == '/endpoint/'
   assert update_query('/endpoint/', {'a': 0}) == '/endpoint/?a=0'
   assert update_query('/endpoint/?a=0', {'a': 1, 'b': 2}) == '/endpoint/?a=1&b=2'
+  assert update_query('/endpoint/?a=0&a=1', {'a': 2, 'b': 2}) == '/endpoint/?a=2&b=2'
+  assert update_query('/endpoint/?a=0&a=1', {'b': 2}) == '/endpoint/?a=1&b=2'
