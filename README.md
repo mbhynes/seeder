@@ -48,10 +48,15 @@ tests/seeder/spiders/test_tennis_explorer_spider.py ..                          
 export SEEDER_DB_CONN_STR='sqlite:///private/seeder.db' 
 ```
 
-2. **Run the spider with the `scrapy` CLI**
+2. **Run the spider with the `scrapy` CLI or `dev crawl`** 
 
 ```bash
+# Run scrapy directly
+source .venv/bin/activate
 scrapy crawl tennisexplorer
+
+# Or use the convenience wrapper
+./dev crawl
 ```
 
 3. **Inspect the resulting database**
@@ -126,7 +131,7 @@ scrapy crawl tennisexplorer \
   - This should produce output like the following:
 
 ```
- scrapy crawl tennisexplorer -s SEEDER_START_DATE=2021-07-01 -s SEEDER_START_WATERMARK=2021-01-01
+scrapy crawl tennisexplorer -s SEEDER_START_DATE=2021-07-01 -s SEEDER_START_WATERMARK=2021-01-01
 2022-06-17 09:09:16 [scrapy.utils.log] INFO: Scrapy 2.5.0 started (bot: seeder)
 2022-06-17 09:09:16 [tennisexplorer] INFO: Running <class 'seeder.spiders.tennis_explorer_spider.TennisExplorerSpider'> spider over watermark span [2021-01-01 00:00:00, 2022-06-24 00:00:00] starting from 2021-07-01 00:00:00.
 2022-06-17 09:09:16 [scrapy.middleware] INFO: Enabled item pipelines:
@@ -195,4 +200,3 @@ The entities in this model are as follows:
   - [`sqlalchemy`](https://www.sqlalchemy.org/) for the database Object-Relational-Mapper [(ORM)](https://en.wikipedia.org/wiki/Object%E2%80%93relational_mapping)
   - [`pytest`](https://docs.pytest.org/en/7.1.x/) for writing simple and easy to read tests 
   - [`pytest-vcr`](https://pytest-vcr.readthedocs.io/en/latest/) for simplifying the testing of code that depends on HTTP requests
-
