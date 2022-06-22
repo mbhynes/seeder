@@ -31,7 +31,7 @@ class TennisExplorerSpider(scrapy.Spider):
   name = 'tennisexplorer'
   allowed_domains = ['tennisexplorer.com']
 
-  def __init__(self, *args, start_date=None, start_watermark=None, stop_watermark=None, **kwargs):
+  def __init__(self, *args, start_date=None, start_watermark=None, stop_watermark=None, exclude_endpoints=None, **kwargs):
     super().__init__(*args, **kwargs)
     self.crawl_id = uuid.uuid4()
     today = datetime.fromordinal(date.today().toordinal())
@@ -49,7 +49,8 @@ class TennisExplorerSpider(scrapy.Spider):
       'start_watermark': self.start_watermark,
       'stop_watermark': self.stop_watermark,
     }
-    self.parsers = {endpoint: cls(**ctx) for (endpoint, cls) in self.ENDPOINT_PARSERS.items()}
+    exclude_endpoints = exclude_endpoints or set()
+    self.parsers = {endpoint: cls(**ctx) for (endpoint, cls) in (self.ENDPOINT_PARSERS.items() - set(exclude_endpoints))}
     self.logger.info(f"Running {type(self)} spider over watermark span [{self.start_watermark}, {self.stop_watermark}] starting from {self.start_date}.")
 
   @classmethod
@@ -70,6 +71,7 @@ class TennisExplorerSpider(scrapy.Spider):
       start_date=_parse_datetime(crawler.settings.get('SEEDER_START_DATE')),
       start_watermark=_parse_datetime(crawler.settings.get('SEEDER_START_WATERMARK')),
       stop_watermark=_parse_datetime(crawler.settings.get('SEEDER_STOP_WATERMARK')),
+      exclude_endpoints=crawler.settings.get('SEEDER_EXCLUDE_ENDPOINTS', '').split(','),
       **kwargs
     )
     return spider

@@ -78,6 +78,11 @@ SEEDER_SQLALCHEMY_ENGINE_ARGS = {
   }
 }
 
+# Set seeder endpoints to exclude from crawling. Adding an entry here controls whether the
+# spider will make further requessts for certain endpoints, e.g. '/match-detail/'.
+# If you don't want to crawl these (e.g. to speed up a specific crawl), they can be removed.
+SEEDER_EXCLUDE_ENDPOINTS = []
+
 # Set the date for which to start a match listing crawl.
 # This is the date to submit in the query string to the /results/ endpoint:
 #   https://www.tennisexplorer.com/results/?type=all&year=<YEAR>&month=<MONTH>&day=<DAY>
