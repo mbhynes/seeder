@@ -260,6 +260,10 @@ class MatchOdds(BaseModel):
   match_number = Column(Integer, index=True)
   issued_by = Column(String, index=True)
   issued_at = Column(DateTime, index=True)
+  index = Column(Integer, index=True)
+  index_rev = Column(Integer, index=True)
+  is_opening = Column(Boolean)
+  is_closing = Column(Boolean)
   odds_p1 = Column(Float)
   odds_p2 = Column(Float)
 

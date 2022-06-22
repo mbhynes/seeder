@@ -49,7 +49,7 @@ class MatchDetailParser(Parser):
         default=None
       )
       if not match_time:
-        raise ValueError(f"Failed to convert the match time '{match_time_tex}' to timedelta for {response.url}")
+        raise ValueError(f"Failed to convert the match time '{match_time_text}' to timedelta for {response.url}")
 
       return match_date + match_time
 
@@ -113,7 +113,8 @@ class MatchDetailParser(Parser):
       last_vals = [None, None]
       k_last = [0, 0]
       records = []
-      for ts in sorted(issue_timestamps):
+      num_timestamps = len(issue_timestamps)
+      for idx, ts in enumerate(sorted(issue_timestamps), start=1):
         # Increment the time index for each player. Since the odds for each side of the line
         # maybe updated at different timestamps, this is a convoluted way of performing a
         # full outer join & a forward fill on the series.
@@ -126,6 +127,10 @@ class MatchDetailParser(Parser):
           'match_number': context['match_number'],
           'issued_by': bookmaker,
           'issued_at': ts,
+          'index': idx,
+          'index_rev': num_timestamps - (idx - 1),
+          'is_opening': (idx == 1) and (ts < context['match_at']), # opening must be issued strictkly before match time 
+          'is_closing': (idx == num_timestamps),
           'odds_p1': last_vals[0],
           'odds_p2': last_vals[1],
         }
