@@ -11,7 +11,7 @@ import scrapy
 
 from seeder.items import MatchItem, PlayerItem
 from seeder.models import PlayerType
-from seeder.spiders.parsers import Parser
+from seeder.parsers import Parser
 from seeder.util.numeric import coerce_int, coerce_float, coerce_timedelta, sum_ignore_none
 
 logger = logging.getLogger(__name__)

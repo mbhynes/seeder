@@ -12,8 +12,8 @@ from bs4 import BeautifulSoup
 import scrapy
 
 from seeder.items import MatchItem
-from seeder.spiders.parsers.match_result_parser import MatchResultParser
-from seeder.spiders.parsers.match_detail_parser import MatchDetailParser
+from seeder.parsers.match_result_parser import MatchResultParser
+from seeder.parsers.match_detail_parser import MatchDetailParser
 
 logger = logging.getLogger(__name__)
 

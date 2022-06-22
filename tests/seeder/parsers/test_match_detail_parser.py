@@ -6,7 +6,7 @@ import pytest
 
 import scrapy
 
-from seeder.spiders.parsers.match_detail_parser import MatchDetailParser
+from seeder.parsers.match_detail_parser import MatchDetailParser
 
 
 class TestMatchDetailParser:

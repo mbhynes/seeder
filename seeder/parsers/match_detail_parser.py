@@ -9,7 +9,7 @@ from bs4 import BeautifulSoup
 import scrapy
 
 from seeder.items import MatchOddsItem
-from seeder.spiders.parsers import Parser
+from seeder.parsers import Parser
 from seeder.util.numeric import coerce_float, coerce_int, coerce_timedelta
 
 logger = logging.getLogger(__name__)

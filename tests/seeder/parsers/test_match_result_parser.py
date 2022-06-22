@@ -9,7 +9,7 @@ import scrapy
 
 from seeder.models import PlayerType
 from seeder.items import MatchItem
-from seeder.spiders.parsers.match_result_parser import MatchResultParser
+from seeder.parsers.match_result_parser import MatchResultParser
 
 class TestMatchResultParser:
 
