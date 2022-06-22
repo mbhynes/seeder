@@ -13,29 +13,25 @@ from seeder.items import MatchItem, PlayerItem
 from seeder.models import PlayerType
 from seeder.parsers import Parser
 from seeder.util.numeric import coerce_int, coerce_float, coerce_timedelta, sum_ignore_none
+from seeder.util.urls import date_from_qs
 
 logger = logging.getLogger(__name__)
 
 
 class MatchResultParser(Parser):
+  """
+  Parse a MatchItem instance for each match record in the results table
+  of a /result/ or /next/ page on tennisexplorer.com; ie on the endpoints:
+    tennisexplorer.com/results/
+    tennisexplorer.com/next/
+
+  This 
+  """
 
   def __init__(self, start_watermark, stop_watermark, logger=logger):
     self.start_watermark = start_watermark
     self.stop_watermark = stop_watermark
     self.logger = logger
-
-  @staticmethod
-  def _parse_date_from_qs(url, year='year', month='month', day='day'):
-    dt = None
-    try: 
-      qs = parse_qs(urlparse(url).query)
-      y = qs.get(year, [])
-      m = qs.get(month, [])
-      d = qs.get(day, [])
-      if all([len(y) == 1, len(m) == 1, len(d) == 1]):
-        dt = datetime(int(y[0]), int(m[0]), int(d[0]))
-    finally:
-      return dt
 
   def _is_datetime_bounded(self, dt):
     is_notnull = (dt is not None)
@@ -50,7 +46,7 @@ class MatchResultParser(Parser):
     links = []
     # Get the next & previous days' match result links
     for href in response.css('li.dNav a::attr(href)').getall():
-      if self._is_datetime_bounded(self._parse_date_from_qs(href)):
+      if self._is_datetime_bounded(date_from_qs(href, on_errors='coerce')):
         links.append(href)
 
     # Get all /match-detail/ references from within the 'results' table.
@@ -73,7 +69,7 @@ class MatchResultParser(Parser):
     """
     soup = BeautifulSoup(response.body, 'html.parser')
     context = {
-      'match_date': self._parse_date_from_qs(response.url), 
+      'match_date': date_from_qs(response.url, on_errors='raise'), 
       'url':        response.url,
     }
     match_records = []
@@ -83,11 +79,19 @@ class MatchResultParser(Parser):
 
     return match_records
 
-  def _parse_match_table_rows(self, soup, global_context=None):
+  def _parse_match_table_rows(self, soup, global_context):
     """
     Parse rows of table into an iterable of items.
     """
+    def _assert_has_required_keys(target, required_keys):
+      missing_keys = set(required_keys) - target.keys()
+      if len(missing_keys):
+        raise KeyError(f"Context was missing keys: {missing_keys}")
+
+    _assert_has_required_keys(global_context, ['match_date', 'url'])
+
     def _record_from_row(row, context):
+      _assert_has_required_keys(context, ['match_date'])
       record = deepcopy(context)
       first_score_col = None
       cols = row.find_all('td')
@@ -129,7 +133,7 @@ class MatchResultParser(Parser):
     def _coerce_record_dtypes(record):
       fn_map = {
         'match_time':   coerce_timedelta,
-        'match_number':     coerce_int,
+        'match_number': coerce_int,
         'result':       coerce_int,
         'score1':       coerce_int,
         'score2':       coerce_int,
@@ -164,11 +168,14 @@ class MatchResultParser(Parser):
             **{'tournament': tournament_url},
           }
           continue
+
         key = _key_record(row)
         if not key:
           continue
-        raw_record =  _record_from_row(row, context)
+
+        raw_record = _record_from_row(row, context)
         records[key] = _coerce_record_dtypes(raw_record)
+
       return records
 
     def _merge_player_records(records):
@@ -176,7 +183,7 @@ class MatchResultParser(Parser):
       left_records = {key[0]: value for (key, value) in records.items() if split_fn(key)}
       right_records = {key[0]: value for (key, value) in records.items() if not split_fn(key)}
       if len(right_records) != len(left_records):
-        self.logger.warn(
+        self.logger.warning(
           f"Detected probable parsing error for url='{global_context.get('url')}\n;"
           "left records do not match right records during merge:\n"
           f"\tleft.keys not in right.keys: {left_records.keys() - right_records.keys()}\n"
@@ -226,11 +233,10 @@ class MatchResultParser(Parser):
           })) 
         except Exception as e:
           self.logger.error(
-            f"Encountered exception '{e}' when merging records for {key} from {global_context.get('url')}"
+            f"Encountered exception '{e}' when merging records for row key '{key}' from {global_context.get('url')}"
           )
       return merged
 
     rows = soup.find_all('tr', class_=['head flags', 'one', 'two'])
-    context = deepcopy(global_context or {})
-    records = _build_records(rows, context)
+    records = _build_records(rows, global_context)
     return _merge_player_records(records)

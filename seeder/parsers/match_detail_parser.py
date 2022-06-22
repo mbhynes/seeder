@@ -16,6 +16,24 @@ logger = logging.getLogger(__name__)
 
 
 class MatchDetailParser(Parser):
+  """
+  Parse a MatchOddsItem instance for each odds change record in the moneyline 
+  odds table of a match on a /match-details/ page of tennisexplorer.com:
+    tennisexplorer.com/match-detail/?id=<match>.
+
+  Bugs/Caveats:
+    - Matches that have only a single line provided by a bookmaker do not have a
+      timestamp for when the line was issued at on the site. As such, we can't determine
+      whether these lines are opening odds or closing odds, and must assume they are closing.
+      It's possible to estimate the opening timestamp as the minimum of all bookies'
+      lines' issue timestamps, but this is left to downstream consumers since we cannot
+      make any guarantees of the accuracy. The timestamps appear to be on the partner site
+      oddsportal.com.
+
+  TODOs:
+    - Refactor the parsers methods, especially the convoluted full outer join of dictionaries
+    - Add parsers (& models) for bets other than moneyline
+  """
 
   def __init__(self, logger=logger, **kwargs):
     self.logger = logger
@@ -93,7 +111,7 @@ class MatchDetailParser(Parser):
     Extract each issued odds (transaction fact) for a match for a single row,
     assumed to correspond to a single bookmaker.
 
-    TODO: clean this up.
+    TODO: refactor this to make it cleaner.
     """
     assert 'match_at' in context
     year = context['match_at'].year
