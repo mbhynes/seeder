@@ -255,7 +255,7 @@ scrapy crawl tennisexplorer -s SEEDER_START_DATE=2021-07-01 -s SEEDER_START_WATE
   -s SEEDER_STOP_WATERMARK="$(date -v -3d '+%Y-%m-%d')"
 ```
 
-Please note that the example invocations about that use the system `date` command are illustrative of a simple way to implement a backfill & incremental crawls on a `cron`-esque system, but using the current system time is **unsuitable for production** in cases the system running that `cron` ever goes down. The good way to manage this is to maintain each crawl's watermarks and run the new crawl with a watermark timespan built from the previous crawl's timespan (with potentially overlapping timespans depending on the crawl frequency).
+Please note that the example invocations about that use the system `date` command are illustrative of a simple way to implement a backfill & incremental crawls on a `cron`-esque system, but using the current system time is **unsuitable for production** in case the system running that `cron` were to go down. The good way to manage this would be to maintain each crawl's watermarks and run the *new* crawl with a watermark timespan built iteratively from the *previous* crawl's timespan (with potentially overlapping timespans depending on the crawl frequency).
 
 ## Implementation Details
 
@@ -283,7 +283,7 @@ class Parser(object):
     return [scrapy.Item(...), scrapy.Item(...)]
 
   def parse_links(self, response):
-    raise [scrapy.Request(...), scrapy.Request(...)]
+    return ['/some/link/?id=1', '/some/link/?id=2']
 ```
 
 The spider's `parse` method selects the appropriate parser for the url of each `scrapy.Request` (based on the url's `path`), as shown in the below skeleton snippet.
