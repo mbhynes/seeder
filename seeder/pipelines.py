@@ -15,6 +15,7 @@ class DatabasePipeline(DatabaseMixin):
 
   def process_item(self, item, spider):
     records = item.make_with_dependencies()
+    spider.logger.debug(f"Processing {len(records)} database records created for {type(item)}'")
     for r in records:
       try:
         success = upsert_record(self.sessionmaker, r)
