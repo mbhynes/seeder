@@ -114,11 +114,10 @@ The entities in this model are as follows:
       - [`/results/`](https://www.tennisexplorer.com/results/)
       - [`/next/`](https://www.tennisexplorer.com/next/)
     - A `Match` contains *both* singles and doubles matches in a single table, differentiated by the `match_type` field. This is an relatively opinionated decision, but it has several advantages: (1) it reduces the number of tables to manage [i.e. there is no need for `DoublesMatch`, `SinglesMatch`, `Player`, `Team`] and (2) would still correctly handle weird shit like [Canadian doubles](https://en.wikipedia.org/wiki/Canadian_doubles) if you were ever so inclined to want that in your database. Some people just have more fun.
-    - Currently the spider just walks linearly from the `/results/` page for the `$SEEDER_START_DATE`. (And naturally You could just grab the html with a basic `curl` command like
+    - Currently the spider just walks linearly from the `/results/` page for the `$SEEDER_START_DATE`. (Of course you could just grab the html with a `curl` command like the below, but this won't scale very well in terms of human effort if you want to periodically and incrementally crawl, inspect error logs, manage schemas, replay requests, restate data, et cetera...)  
      ```bash
      curl -O https://www.tennisexplorer.com/results/?type=all&year=2022&month=01&day=[1-31]
      ```
-      and then parse the html, but this won't scale very well in terms of human effort if you want to periodically and incrementally crawl, inspect error logs, manage schemas, etc...) 
     - Please note that all `match_at` timestamps are UTC.
 
 
