@@ -7,3 +7,4 @@ private/*
 */.ipynb_checkpoints/*
 .ipynb_checkpoints/*
 deps/*
+*.db
