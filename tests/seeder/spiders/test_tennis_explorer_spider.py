@@ -23,7 +23,9 @@ class TestTennisExplorerSpider:
       mock_date.today.return_value = today
       spider = TennisExplorerSpider()
       self._assert_attributes_equal(spider, {
-        'start_date': to_datetime(today),
+        'start_date': to_datetime(
+          today - datetime.timedelta(days=TennisExplorerSpider.default_start_watermark_offset)
+        ),
         'start_watermark': to_datetime(
           today - datetime.timedelta(days=TennisExplorerSpider.default_start_watermark_offset)
         ),

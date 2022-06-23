@@ -48,7 +48,6 @@ class TennisExplorerSpider(scrapy.Spider):
     super().__init__(*args, **kwargs)
     self.crawl_id = uuid.uuid4()
     today = datetime.fromordinal(date.today().toordinal())
-    self.start_date = start_date or today
     self.start_watermark = (
       start_watermark 
       or (today - timedelta(days=self.default_start_watermark_offset))
@@ -57,6 +56,10 @@ class TennisExplorerSpider(scrapy.Spider):
       stop_watermark 
       or (today + timedelta(days=self.default_stop_watermark_offset))
     )
+    self.start_date = start_date or min(self.start_watermark, self.stop_watermark)
+    assert self.stop_watermark >= self.start_watermark
+    assert self.start_date >= self.start_watermark
+
     ctx = {
       'logger': self.logger,
       'start_watermark': self.start_watermark,

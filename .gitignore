@@ -4,4 +4,4 @@
 .venv/*
 deps/*
 private/*.db
-httpcache/*.db
+.scrapy/*
