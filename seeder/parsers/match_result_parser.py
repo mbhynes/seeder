@@ -149,8 +149,8 @@ class MatchResultParser(Parser):
       return coerced
 
     def _build_records(rows, global_context):
+      context = {} # initialize to be empty since a result table should have a header
       records = {}
-      context = {}
       for (n, row) in enumerate(rows, start=1):
         # If this row contains a new header, reset the tournament context for the subsequent rows,
         # and then continue to the next row, which contains match result data. 

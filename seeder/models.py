@@ -60,7 +60,6 @@ class Base(object):
     }
 
 
-
 BaseModel = declarative_base(cls=Base)
 
 
