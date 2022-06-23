@@ -24,8 +24,6 @@ class MatchResultParser(Parser):
   of a /result/ or /next/ page on tennisexplorer.com; ie on the endpoints:
     tennisexplorer.com/results/
     tennisexplorer.com/next/
-
-  This 
   """
 
   def __init__(self, start_watermark, stop_watermark, logger=logger):
@@ -39,9 +37,12 @@ class MatchResultParser(Parser):
 
   def parse_links(self, response):
     """
-    Retrieve links to the next day; each daily match summary
-    page has a set of 3 navigation links:
+    Return links to the previous/subsequent dates' match results pages.
+
+    Each daily match summary page has a set of 3 navigation links:
       '« previous day', 'today', 'next day »'
+    This method parses the "previous" & "next" day links such that
+    a spider may continue iterating through daily results.
     """
     links = []
     # Get the next & previous days' match result links
@@ -88,9 +89,22 @@ class MatchResultParser(Parser):
       if len(missing_keys):
         raise KeyError(f"Context was missing keys: {missing_keys}")
 
-    _assert_has_required_keys(global_context, ['match_date', 'url'])
+    def _key_record(row):
+      """
+      Retrieve the row's id. Each row is one of a pair, e.g. (10, 10b), that signifies
+      the "home" and "away" counterpart players for the match.
+      """
+      pattern = r'r([0-9]+)(b?)'
+      key = re.match(pattern, row.attrs.get('id', ''))
+      if key:
+        return key.groups()
+      return None
 
     def _record_from_row(row, context):
+      """
+      Create a (partial) match dictionary record for a single player
+      from 1 row of the results table.
+      """
       _assert_has_required_keys(context, ['match_date'])
       record = deepcopy(context)
       first_score_col = None
@@ -118,19 +132,19 @@ class MatchResultParser(Parser):
           match_number = parse_qs(urlparse(match_url).query).get('id')[0]
           record['match_number'] = match_number
       return record
-
-    def _key_record(row):
-      """
-      Retrieve the row's id. Each row is one of a pair, e.g. (10, 10b), that signifies
-      the "home" and "away" counterpart players for the match.
-      """
-      pattern = r'r([0-9]+)(b?)'
-      key = re.match(pattern, row.attrs.get('id', ''))
-      if key:
-        return key.groups()
-      return None
     
     def _coerce_record_dtypes(record):
+      """
+      Cast the string values of the record into numeric types.
+      
+      N.b. Scrapy has a notion of Item input/output processors that could be
+      applied here, but since the table parsing process is too complicated
+      for the simple framework (i.e. we have variable # of rows from a table,
+      and need to merge these to produce a single item) it's simpler to just
+      do everything here in 1 method, rather than mix the logic between files.
+
+      https://docs.scrapy.org/en/latest/topics/loaders.html#input-and-output-processors
+      """
       fn_map = {
         'match_time':   coerce_timedelta,
         'match_number': coerce_int,
@@ -149,6 +163,13 @@ class MatchResultParser(Parser):
       return coerced
 
     def _build_records(rows, global_context):
+      """
+      Transform the provided rows of the results table into a list of dict records
+      for each player's results in a single match.
+
+      In general there will be more input rows provided than output records since we
+      will filter out internal table headers.
+      """
       context = {} # initialize to be empty since a result table should have a header
       records = {}
       for (n, row) in enumerate(rows, start=1):
@@ -179,6 +200,11 @@ class MatchResultParser(Parser):
       return records
 
     def _merge_player_records(records):
+      """
+      Merge the complementary pairs of player match results records for each match
+      to create a complete MatchItem. If 2*N input records are provided, N MatchItems
+      should be returned.
+      """
       split_fn = lambda k: k[1] == ''
       left_records = {key[0]: value for (key, value) in records.items() if split_fn(key)}
       right_records = {key[0]: value for (key, value) in records.items() if not split_fn(key)}
@@ -237,6 +263,7 @@ class MatchResultParser(Parser):
           )
       return merged
 
+    _assert_has_required_keys(global_context, ['match_date', 'url'])
     rows = soup.find_all('tr', class_=['head flags', 'one', 'two'])
     records = _build_records(rows, global_context)
     return _merge_player_records(records)
