@@ -12,7 +12,7 @@ import sqlalchemy
 # Scrapy configuration settings
 # ========================================================
 
-LOG_LEVEL = logging.DEBUG
+LOG_LEVEL = logging.INFO
 BOT_NAME = 'seederbot'
 
 SPIDER_MODULES = ['seeder.spiders']
