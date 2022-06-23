@@ -54,7 +54,9 @@ export SEEDER_DB_CONN_STR='sqlite:///private/seeder.db'
 # Run scrapy directly
 source .venv/bin/activate
 scrapy crawl tennisexplorer
+```
 
+```
 # Or use the convenience wrapper
 ./dev crawl
 ```
@@ -64,34 +66,36 @@ scrapy crawl tennisexplorer
  - Dump out an example record from the sqlite db file:
 ```bash
 sqlite3 -line private/seeder.db 'select * from matches limit 1;'
-
-   match_id = 2118041
- tournament = /chiang-rai-7-itf/2022/wta-women/
-   match_at = 2022-06-16 10:00:00.000000
- match_type = single
-  is_win_p1 = 1
-  is_win_p2 = 0
-avg_odds_p1 = 1.54
-avg_odds_p2 = 2.28
-         p1 = /player/ueda-dd577/
-  result_p1 = 2
-    sets_p1 = 13
-  score1_p1 = 7
-  score2_p1 = 6
-  score3_p1 =
-  score4_p1 =
-  score5_p1 =
-         p2 = /player/ounmuang/
-  result_p2 = 0
-    sets_p2 = 8
-  score1_p2 = 5
-  score2_p2 = 3
-  score3_p2 =
-  score4_p2 =
-  score5_p2 =
- updated_at = 2022-06-16 20:41:12.870986
- created_at = 2022-06-16 20:41:12.870989
+    match_id = e4=[Z0
+match_number = 2125759
+  tournament = /eastbourne/2022/wta-women/
+    match_at = 2022-06-22 17:50:00.000000
+  match_type = single
+   is_win_p1 = 1
+   is_win_p2 = 0
+ avg_odds_p1 = 2.01
+ avg_odds_p2 = 1.82
+          p1 = leScg3
+   result_p1 = 1
+     sets_p1 = 6
+   score1_p1 = 6
+   score2_p1 =
+   score3_p1 =
+   score4_p1 =
+   score5_p1 =
+          p2 = t5OXIo4m
+   result_p2 = 0
+     sets_p2 = 3
+   score1_p2 = 3
+   score2_p2 =
+   score3_p2 =
+   score4_p2 =
+   score5_p2 =
+  created_at = 2022-06-23 01:50:33.196037
+  updated_at = 2022-06-23 01:50:33.196039
 ```
+
+  - If you're thinking that the primary and foreign keys look funky, please note that they are binary `UUID` *surrogate* keys created from the models' natural keys, since as scrapers we do not have access to the upstream database table keys. (As a technical aside, these *surrogate keys* are just wannabe surrogate keys since we create them by hashing the natural keyset of a record. Implementing proper [surrogate keys](https://www.kimballgroup.com/1998/05/surrogate-keys/) isn't currently in scope for this project).
 
 ## Configuration
 
@@ -115,17 +119,22 @@ SEEDER_STOP_WATERMARK = datetime.datetime(2022, 1, 1)
 
 If unset or set to `None`, these will default to a sane span of `[today - 2 days, today + 3 days]`, which is reasonable for daily incremental crawls.
 
-To manage the database, the start and stop watermarks may be used to populate the tables with minimal requests, e.g.:
+### Initial & Incremental Crawl Guide
+
+To populate and manage the database it's preferable to consider 2 operations: 
+ - An initial data *backfill* in which data from a historical time range is scraped
+ - Ongoing inremental crawls in which only more recently created and/or updated data is scraped
 
 1. **Initial Backfill**
 
-  - Run an initial backfill to populate the data starting from a fixed point in the past:
+  - Run an initial backfill to populate the data starting from some fixed point in the past up until roughly the present, starting from the stop watemark and going backwards in time:
 
 ```bash
 source .venv/bin/activate
 scrapy crawl tennisexplorer \
   -s SEEDER_START_WATERMARK='2021-01-01' \
-  -s SEEDER_START_DATE='2021-07-01' \
+  -s SEEDER_STOP_WATERMARK="$(date -v -2d '+%Y-%m-%d')" \
+  -s SEEDER_START_WATERMARK="$(date -v -2d '+%Y-%m-%d')" \
 ```
   
   - This should produce output like the following:
@@ -143,16 +152,40 @@ scrapy crawl tennisexplorer -s SEEDER_START_DATE=2021-07-01 -s SEEDER_START_WATE
 2022-06-17 09:11:16 [scrapy.extensions.logstats] INFO: Crawled 32 pages (at 16 pages/min), scraped 30894 items (at 17037 items/min)
 ...
 ```
+  - If desired, we may crawl forwards in time by specifying the `SEEDER_START_DATE` to be the same as the `SEEDER_START_WATERMARK`. (Or similarly start the crawl in the middle of the interval by doing a bit of date arithmetic)
+  - It is also possible to exclude parsing or marking requests to endpoints using the `SEEDER_EXCLUDE_ENDPOINTS` parameter, which must be a list of strings:
+    ```python
+    # seeder/settings.py
+    SEEDER_EXCLUDE_ENDPOINTS = ['/match-detail/']
+    ```
+
+    ```bash
+    ./dev crawl -s SEEDER_EXCLUDE_ENDPOINTS='/match-detail/'
+    ```
+  This parameter may be useful in backfills where parsing the `/match-detail/` pages (which are time-consuming to process) is not desirable for dates earlier than 2 years ago, say.
     
 2. **Incremental Crawl**
 
   - Every day (suppose), run an incremental crawl using a start watermark that overlaps slightly with the previous crawl's stop watermark
-  - The default values of the start and stop watermark of `[today - 3 days, today + 7 days]` are intended to be sane defaults for this use case, in which a small overlap is desirable (since we upsert records and wish to capture changes after matches are played & the results are available)
+  - The default values of the start and stop watermark of `[today - 2 days, today + 3 days]` are intended to be sane defaults for this use case, in which a small overlap is desirable (since we upsert records and wish to capture changes after matches are played & the results are available)
+  - However, since we enable http caching with Scrapy's [`HttpCacheMiddleware`](https://docs.scrapy.org/en/latest/topics/downloader-middleware.html?highlight=httpcache#httpcache-middleware-settings), incremental crawls of pages that are *incomplete* (i.e. have matches that have not yet completed) need to disable the caching to yield new results
+  - If running on some kind of `cron`, this may be done for a suitable date range such as:
 
 ```bash
-source .venv/bin/activate
-scrapy crawl tennisexplorer
+./dev crawl -s HTTPCACHE_ENABLED=0 \
+  -s SEEDER_START_WATERMARK="$(date -v -2d '+%Y-%m-%d')" \
+  -s SEEDER_STOP_WATERMARK="$(date -v +3d '+%Y-%m-%d')"
 ```
+
+  - After enough time has passed for matches to complete and the remote data to be finalized, the local data may be finalized as well as the http responses cached (for faster future parsing replay or database restatement) with another pass that specifies the start and stop watermarks as suitable dates in the past. In the case of daily incremental crawls, this could look like the following:
+```bash
+./dev crawl \
+  -s HTTPCACHE_ENABLED=1 \
+  -s SEEDER_START_WATERMARK="$(date -v -6d '+%Y-%m-%d')" \
+  -s SEEDER_STOP_WATERMARK="$(date -v -3d '+%Y-%m-%d')"
+```
+
+Please note that the example invocations about that use the system `date` command are illustrative of a simple way to implement a backfill & incremental crawls on a `cron`, but using the current system time is **unsuitable for production** in cases the system running cron ever goes down. The good way to manage this is to maintain each crawl's watermarks and run the new crawl with a watermark timespan built from the previous crawl's timespan (with potentially overlapping timespans depending on the crawl frequency).
 
 ## Data Model
 
@@ -176,6 +209,7 @@ The entities in this model are as follows:
      curl -O https://www.tennisexplorer.com/results/?type=all&year=2022&month=01&day=[1-31]
      ```
       and then parse the html, but this won't scale very well in terms of human effort if you want to periodically and incrementally crawl, inspect error logs, manage schemas, etc...) 
+    - Please note that all `match_at` timestamps are UTC.
 
 
   - **Player**
@@ -186,6 +220,14 @@ The entities in this model are as follows:
       - [`/doubles-team/`](https://www.tennisexplorer.com/doubles-team/)
     - A `Player` record may be either a `PlayerType.single` or `PlayerType.double`, in which latter case the members of the doubles team may be retrieved with the self-referential foreign keys `p1` and `p2`. No attempt is made to order these, since we preserve the ordering from the `/doubles-team/` endpoint. 
     - Please note that we currently don't crawl the `/player/` or `/doubles-team/` endpoints directly; we issue a skeleton record to maintain referential integrityj
+
+  - **MatchOdds**
+    - Grain: 1 row per odds issued per bookmaker per match
+    - Source Endpoints: 
+      - [`/match-detail/`](https://www.tennisexplorer.com/match-detail/?id=2126337)
+    - A `MatchOdds` record is a fact representing the moneyline odds issued by a bookmarker for a match, up until the match time. Since lines change arbitrarily at any time before the match begins, records for the same match/bookmaker form a timeseries of fluctuations in the odds given by that bookmarker up to the point that the *closing line* is issued. All timestamps here have minute-grained resolution, and there is liekly some (unknown) measurement error or delay since the data we're scraping was itself probably created by some kind of scraper... make a copy of a copy enough times, and far enough down the line
+![Yar there be monsters](https://y.yarn.co/e92a57b3-2d87-4bbd-91ad-7ce2811ee623_text.gif)
+    - Please note that there is currently a data quality limitation if a bookies only issues a single line (i.e. the opening line equals the closing line). The tennisexplorer.com `/match-detail/` page doesn't show the timestamp at which the line was issued in this case. As such, we assume the worst-case scenario and treat this as a closing line issued at the match's `match_at` timestamp.
 
 ## Implementation Details
 
