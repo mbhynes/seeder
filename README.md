@@ -113,7 +113,7 @@ SEEDER_START_WATERMARK = datetime.datetime(2021, 1, 1)
 SEEDER_STOP_WATERMARK = datetime.datetime(2022, 1, 1) 
 ```
 
-If unset or set to `None`, these will default to a sane span of `[today - 3 days, today + 7 days]`, which is reasonable for daily incremental crawls.
+If unset or set to `None`, these will default to a sane span of `[today - 2 days, today + 3 days]`, which is reasonable for daily incremental crawls.
 
 To manage the database, the start and stop watermarks may be used to populate the tables with minimal requests, e.g.:
 
@@ -186,6 +186,94 @@ The entities in this model are as follows:
       - [`/doubles-team/`](https://www.tennisexplorer.com/doubles-team/)
     - A `Player` record may be either a `PlayerType.single` or `PlayerType.double`, in which latter case the members of the doubles team may be retrieved with the self-referential foreign keys `p1` and `p2`. No attempt is made to order these, since we preserve the ordering from the `/doubles-team/` endpoint. 
     - Please note that we currently don't crawl the `/player/` or `/doubles-team/` endpoints directly; we issue a skeleton record to maintain referential integrityj
+
+## Implementation Details
+
+### Crawler Components
+
+The crawler system makes use of several `scrapy` components: 
+- [spiders](https://docs.scrapy.org/en/latest/topics/spiders.html) for managing the crawl
+- [item pipelines](https://docs.scrapy.org/en/latest/topics/item-pipeline.html) for upserting records to the database
+- [spider middleware](https://docs.scrapy.org/en/latest/topics/spider-middleware.html) for logging metadata about a crawl (which also creates records in the datbase)
+
+### Spider
+
+Our spider is defined in the class `TennisExplorerSpider` in [`seeder.spiders.tennis_explorer_spider`](seeder/spiders/tennis_explorer_spider.py).
+
+The spider is not responsible for any of the parsing or processing directly.
+Rather, it maintains a mapping of parser classes for each endpoint, where are parser extends `seeder.parsers.Parser` and must implement 2 methods that return iterables of `scrapy.Item` and `scrapy.Request`, respectively, from a `scrapy.Response`:
+
+```python
+class Parser(object):
+
+  def __init__(self, *args, **kwargs):
+    pass
+
+  def parse_items(self, response):
+    return [scrapy.Item(...), scrapy.Item(...)]
+
+  def parse_links(self, response):
+    raise [scrapy.Request(...), scrapy.Request(...)]
+```
+
+The spider's `parse` method selects the appropriate parser for the url of each `scrapy.Request` (based on the url's `path`), as shown in the below skeleton snippet.
+To add additional parsers, the parsing logic may be implemented in a parser that handels each endpoint, after which the `TennisExplorerSpider`'s `ENDPOINT_PARSERS` may be updated.
+
+```python
+class TennisExplorerSpider(scrapy.Spider):
+
+  # Define endpoint-specific parser classes here
+  ENDPOINT_PARSERS = {
+    '/results/': {
+      'parser': MatchResultParser,
+      'parser_kwargs': {},
+      'request_kwargs': {'priority': 1},
+    },
+    '/next/': {
+      ...
+    },
+    '/match-detail/': {
+      ...
+    },
+  }
+
+  def __init__(self, ...):
+    
+    # create the local mapping of endpoint->parser objects
+    ctx = { ... } # come context
+    self.parsers = {
+      endpoint: config['parser'](**ctx, **config.get('parser_kwargs', {})) 
+      for (endpoint, config) in self.ENDPOINT_PARSERS.items()
+    }
+
+  def parse(self, response):
+    url = urllib.parse.urlparse(response.url)
+    parser = self.parsers.get(url.path) 
+    for item in parser.parse_items(response):
+      yield item
+
+    for href in parser.parse_links(response):
+      yield scrapy.Request(href, self.parse)
+```
+
+### Item Pipeline
+
+Records are inserted into the database using a combination of:
+  - A `scrapy.Item` processing pipeline, [`seeder.pipelines.DatabasePipeline`](seeder/pipelines.py)
+  - Model builder logic specifed in each model in [`seeder.models`](seeder/models.py); each model for the pipeline has 3 methods that create `sqlalchemy` ORM instances given a dictionary input payload:
+    - `make(**kwargs)`, which creates a (potentially incomplete) record
+    - `make_dependencies(**kwargs)`, which creates an iterable of incomplete records that the record would depend on (i.e. skeleton records for any foreign keys the record has to maintain referential integrity)
+    - `make_with_dependencies(**kwargs)`, which calls the above 2 methods and concatenates their output
+  - `scapy.Item`s in the [`seeder.items`](seeder/items.py) module, which are dynamically built from the `sqlalchemy` models 
+
+The item pipeline does relatively little work itself, but is reponsible for:
+- creating ORM model instances for each `scrapy.Item` it receives by calling that `item`'s `make_with_dependencies` method
+- subsequently upserting these records to the database
+
+Some of that seems unusual (e.g. the *incomplete* records), but there are a few considerations to note that motivate this process:
+  - When a `scrapy.Response` is processed, we may not have all of the information returned in that response to create a record (e.g. the `/results/` endpoint for match results can create `Match` records, but would not have the dimensional attributes for each `Player` to create *complete* `Player` records). As such, we have to emit *incomplete* records that contain only the bare minimum information (i.e. the record's primary key), with the expectation that the page containing the remainder of the data needed will be processed at some point in the future
+  - Each ORM model must specify how to contruct its skeleton dependent records, but does not need to complete them. Since we cannot guarantee processing order of items in the scraping pipeline, all of the dependencies for a specific item must be created and committed to the database within the same pipeline `process_item` call
+  - A direct consequence of this is that the ORM models have very loose nullability constraints on each column, since almost all of the columns *could* be null if a table row was created from a skeleton ORM record.
 
 ## Related Work
 

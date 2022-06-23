@@ -4,7 +4,7 @@ class Parser(object):
     pass
 
   def parse_items(self, response):
-    raise NotImplementedError
+    return []
 
   def parse_links(self, response):
-    raise NotImplementedError
+    return []

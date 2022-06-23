@@ -39,8 +39,8 @@ class TennisExplorerSpider(scrapy.Spider):
     },
   }
   
-  default_start_watermark_offset = 3
-  default_stop_watermark_offset = 7
+  default_start_watermark_offset = 2
+  default_stop_watermark_offset = 3
   name = 'tennisexplorer'
   allowed_domains = ['tennisexplorer.com']
 
