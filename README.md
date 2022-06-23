@@ -97,96 +97,6 @@ match_number = 2125759
 
   - If you're thinking that the primary and foreign keys look funky, please note that they are binary `UUID` *surrogate* keys created from the models' natural keys, since as scrapers we do not have access to the upstream database table keys. (As a technical aside, these *surrogate keys* are just wannabe surrogate keys since we create them by hashing the natural keyset of a record. Implementing proper [surrogate keys](https://www.kimballgroup.com/1998/05/surrogate-keys/) isn't currently in scope for this project).
 
-## Configuration
-
-### Spider Crawl Configuration
-
-The spider crawl timespan is configured such that only the match `/results/` pages in the datetime interval `[SEEDER_START_WATERMARK, SEEDER_STOP_WATERMARK]` will be crawled and parsed, using the following parameters in `settings.py`:
-```
-import datetime
-
-# Set the date for which to start a match listing crawl.
-# This is the date to submit in the query string to the /results/ endpoint:
-#   https://www.tennisexplorer.com/results/?type=all&year=<YEAR>&month=<MONTH>&day=<DAY>
-SEEDER_START_DATE = datetime.datetime(2022, 1, 1) 
-
-# Set the earliest date for which the /results/ pages should be crawled
-SEEDER_START_WATERMARK = datetime.datetime(2021, 1, 1) 
-
-# Set the latest date for which the /results/ pages should be crawled
-SEEDER_STOP_WATERMARK = datetime.datetime(2022, 1, 1) 
-```
-
-If unset or set to `None`, these will default to a sane span of `[today - 2 days, today + 3 days]`, which is reasonable for daily incremental crawls.
-
-### Initial & Incremental Crawl Guide
-
-To populate and manage the database it's preferable to consider 2 operations: 
- - An initial data *backfill* in which data from a historical time range is scraped
- - Ongoing inremental crawls in which only more recently created and/or updated data is scraped
-
-1. **Initial Backfill**
-
-  - Run an initial backfill to populate the data starting from some fixed point in the past up until roughly the present, starting from the stop watemark and going backwards in time:
-
-```bash
-source .venv/bin/activate
-scrapy crawl tennisexplorer \
-  -s SEEDER_START_WATERMARK='2021-01-01' \
-  -s SEEDER_STOP_WATERMARK="$(date -v -2d '+%Y-%m-%d')" \
-  -s SEEDER_START_WATERMARK="$(date -v -2d '+%Y-%m-%d')" \
-```
-  
-  - This should produce output like the following:
-
-```
-scrapy crawl tennisexplorer -s SEEDER_START_DATE=2021-07-01 -s SEEDER_START_WATERMARK=2021-01-01
-2022-06-17 09:09:16 [scrapy.utils.log] INFO: Scrapy 2.5.0 started (bot: seeder)
-2022-06-17 09:09:16 [tennisexplorer] INFO: Running <class 'seeder.spiders.tennis_explorer_spider.TennisExplorerSpider'> spider over watermark span [2021-01-01 00:00:00, 2022-06-24 00:00:00] starting from 2021-07-01 00:00:00.
-2022-06-17 09:09:16 [scrapy.middleware] INFO: Enabled item pipelines:
-['seeder.pipelines.DatabasePipeline']
-2022-06-17 09:09:16 [scrapy.core.engine] INFO: Spider opened
-2022-06-17 09:09:16 [scrapy.extensions.logstats] INFO: Crawled 0 pages (at 0 pages/min), scraped 0 items (at 0 items/min)
-2022-06-17 09:09:16 [scrapy.extensions.telnet] INFO: Telnet console listening on 127.0.0.1:6023
-2022-06-17 09:10:16 [scrapy.extensions.logstats] INFO: Crawled 16 pages (at 16 pages/min), scraped 13857 items (at 13857 items/min)
-2022-06-17 09:11:16 [scrapy.extensions.logstats] INFO: Crawled 32 pages (at 16 pages/min), scraped 30894 items (at 17037 items/min)
-...
-```
-  - If desired, we may crawl forwards in time by specifying the `SEEDER_START_DATE` to be the same as the `SEEDER_START_WATERMARK`. (Or similarly start the crawl in the middle of the interval by doing a bit of date arithmetic)
-  - It is also possible to exclude parsing or marking requests to endpoints using the `SEEDER_EXCLUDE_ENDPOINTS` parameter, which must be a list of strings:
-    ```python
-    # seeder/settings.py
-    SEEDER_EXCLUDE_ENDPOINTS = ['/match-detail/']
-    ```
-
-    ```bash
-    ./dev crawl -s SEEDER_EXCLUDE_ENDPOINTS='/match-detail/'
-    ```
-  This parameter may be useful in backfills where parsing the `/match-detail/` pages (which are time-consuming to process) is not desirable for dates earlier than 2 years ago, say.
-    
-2. **Incremental Crawl**
-
-  - Every day (suppose), run an incremental crawl using a start watermark that overlaps slightly with the previous crawl's stop watermark
-  - The default values of the start and stop watermark of `[today - 2 days, today + 3 days]` are intended to be sane defaults for this use case, in which a small overlap is desirable (since we upsert records and wish to capture changes after matches are played & the results are available)
-  - However, since we enable http caching with Scrapy's [`HttpCacheMiddleware`](https://docs.scrapy.org/en/latest/topics/downloader-middleware.html?highlight=httpcache#httpcache-middleware-settings), incremental crawls of pages that are *incomplete* (i.e. have matches that have not yet completed) need to disable the caching to yield new results
-  - If running on some kind of `cron`, this may be done for a suitable date range such as:
-
-```bash
-./dev crawl -s HTTPCACHE_ENABLED=0 \
-  -s SEEDER_START_WATERMARK="$(date -v -2d '+%Y-%m-%d')" \
-  -s SEEDER_STOP_WATERMARK="$(date -v +3d '+%Y-%m-%d')"
-```
-
-  - After enough time has passed for matches to complete and the remote data to be finalized, the local data may be finalized as well as the http responses cached (for faster future parsing replay or database restatement) with another pass that specifies the start and stop watermarks as suitable dates in the past. In the case of daily incremental crawls, this could look like the following:
-```bash
-./dev crawl \
-  -s HTTPCACHE_ENABLED=1 \
-  -s SEEDER_START_WATERMARK="$(date -v -6d '+%Y-%m-%d')" \
-  -s SEEDER_STOP_WATERMARK="$(date -v -3d '+%Y-%m-%d')"
-```
-
-Please note that the example invocations about that use the system `date` command are illustrative of a simple way to implement a backfill & incremental crawls on a `cron`, but using the current system time is **unsuitable for production** in cases the system running cron ever goes down. The good way to manage this is to maintain each crawl's watermarks and run the new crawl with a watermark timespan built from the previous crawl's timespan (with potentially overlapping timespans depending on the crawl frequency).
-
 ## Data Model
 
 The data model is specified with `sqlalchemy` models in the module [seeder.models](seeder/blob/main/seeder/models.py).
@@ -225,9 +135,127 @@ The entities in this model are as follows:
     - Grain: 1 row per odds issued per bookmaker per match
     - Source Endpoints: 
       - [`/match-detail/`](https://www.tennisexplorer.com/match-detail/?id=2126337)
-    - A `MatchOdds` record is a fact representing the moneyline odds issued by a bookmarker for a match, up until the match time. Since lines change arbitrarily at any time before the match begins, records for the same match/bookmaker form a timeseries of fluctuations in the odds given by that bookmarker up to the point that the *closing line* is issued. All timestamps here have minute-grained resolution, and there is liekly some (unknown) measurement error or delay since the data we're scraping was itself probably created by some kind of scraper... make a copy of a copy enough times, and far enough down the line
+    - A `MatchOdds` record is a fact representing the moneyline odds issued by a bookmarker for a match, up until the match time. Since lines change arbitrarily at any time before the match begins, records for the same match/bookmaker form a timeseries of fluctuations in the odds given by that bookmarker up to the point that the *closing line* is issued. All timestamps here have minute-grained resolution, and there is liekly some (unknown) measurement error or delay since the data we're scraping was itself probably created by some kind of scraper... make a copy of a copy enough times, and...
 ![Yar there be monsters](https://y.yarn.co/e92a57b3-2d87-4bbd-91ad-7ce2811ee623_text.gif)
     - Please note that there is currently a data quality limitation if a bookies only issues a single line (i.e. the opening line equals the closing line). The tennisexplorer.com `/match-detail/` page doesn't show the timestamp at which the line was issued in this case. As such, we assume the worst-case scenario and treat this as a closing line issued at the match's `match_at` timestamp.
+
+## Configuration
+
+### Spider Watermark Configuration
+
+The spider crawl timespan is configured such that only the match `/results/` pages in the datetime interval `[SEEDER_START_WATERMARK, SEEDER_STOP_WATERMARK]` will be crawled and parsed, using the following parameters in `settings.py`:
+```
+import datetime
+
+# Set the date for which to start a match listing crawl.
+# This is the date to submit in the query string to the /results/ endpoint:
+#   https://www.tennisexplorer.com/results/?type=all&year=<YEAR>&month=<MONTH>&day=<DAY>
+SEEDER_START_DATE = datetime.datetime(2022, 1, 1) 
+
+# Set the earliest date for which the /results/ pages should be crawled
+SEEDER_START_WATERMARK = datetime.datetime(2021, 1, 1) 
+
+# Set the latest date for which the /results/ pages should be crawled
+SEEDER_STOP_WATERMARK = datetime.datetime(2022, 1, 1) 
+```
+
+If unset or set to `None`, the start and stop watermarks will default to a sane span of `[today - 2 days, today + 3 days]`, respectively, which is reasonable for daily incremental crawls.
+
+### Endpoing Exclusion
+
+The endpoints currently crawled & processed by the spider are:
+- `/results/` 
+- `/next/` 
+- `/match-detail/` 
+
+It is possible to exclude parsing or marking requests to endpoints using the `SEEDER_EXCLUDE_ENDPOINTS` parameter, which must be a list of strings:
+```python
+# seeder/settings.py
+SEEDER_EXCLUDE_ENDPOINTS = ['/match-detail/']
+```
+
+```bash
+./dev crawl -s SEEDER_EXCLUDE_ENDPOINTS='/match-detail/'
+```
+
+This parameter may be useful in backfills where parsing the `/match-detail/` pages (which are time-consuming to process) is not desirable for dates earlier than 2 years ago, say.
+
+### Caching
+
+We use http caching with Scrapy's [`HttpCacheMiddleware`](https://docs.scrapy.org/en/latest/topics/downloader-middleware.html?highlight=httpcache#httpcache-middleware-settings), and write it to a `dbm` file (`.scrapy/httpcache/tennisexplorer.db`).
+
+These settings are all prefixed by `HTTPCACHE_` in the settings file, and are documented on the `scrapy` page above.
+
+Incremental crawls of pages that are *incomplete* (i.e. have matches that have not yet completed) will need to disable the caching to query the server and yield new results (more on this below).
+
+## Crawling Guide
+
+To populate and manage the database it's helpful to consider 2 distinct operations: 
+ - An initial data *backfill* in which data from a historical time range is scraped
+ - Ongoing *incremental* crawls in which only more recently created and/or updated data is scraped
+
+1. **Initial Backfill**
+
+  - To run an initial backfill to populate the data starting from some fixed point in the past up until roughly the present, starting from the stop watemark and going backwards in time:
+
+```bash
+source .venv/bin/activate
+scrapy crawl tennisexplorer \
+  -s SEEDER_START_WATERMARK='2021-01-01' \
+  -s SEEDER_STOP_WATERMARK="$(date -v -2d '+%Y-%m-%d')" \
+  -s SEEDER_START_WATERMARK="$(date -v -2d '+%Y-%m-%d')" \
+```
+  
+  - This should produce output like the following:
+
+```
+scrapy crawl tennisexplorer -s SEEDER_START_DATE=2021-07-01 -s SEEDER_START_WATERMARK=2021-01-01
+2022-06-17 09:09:16 [scrapy.utils.log] INFO: Scrapy 2.5.0 started (bot: seeder)
+2022-06-17 09:09:16 [tennisexplorer] INFO: Running <class 'seeder.spiders.tennis_explorer_spider.TennisExplorerSpider'> spider over watermark span [2021-01-01 00:00:00, 2022-06-24 00:00:00] starting from 2021-07-01 00:00:00.
+2022-06-17 09:09:16 [scrapy.middleware] INFO: Enabled item pipelines:
+['seeder.pipelines.DatabasePipeline']
+2022-06-17 09:09:16 [scrapy.core.engine] INFO: Spider opened
+2022-06-17 09:09:16 [scrapy.extensions.logstats] INFO: Crawled 0 pages (at 0 pages/min), scraped 0 items (at 0 items/min)
+2022-06-17 09:09:16 [scrapy.extensions.telnet] INFO: Telnet console listening on 127.0.0.1:6023
+2022-06-17 09:10:16 [scrapy.extensions.logstats] INFO: Crawled 16 pages (at 16 pages/min), scraped 13857 items (at 13857 items/min)
+2022-06-17 09:11:16 [scrapy.extensions.logstats] INFO: Crawled 32 pages (at 16 pages/min), scraped 30894 items (at 17037 items/min)
+...
+```
+  - If desired, we may crawl forwards in time by specifying the `SEEDER_START_DATE` to be the same as the `SEEDER_START_WATERMARK`. (Or similarly start the crawl in the middle of the interval by doing a bit of date arithmetic)
+  - It is also possible to exclude parsing or marking requests to endpoints using the `SEEDER_EXCLUDE_ENDPOINTS` parameter, which must be a list of strings:
+    ```python
+    # seeder/settings.py
+    SEEDER_EXCLUDE_ENDPOINTS = ['/match-detail/']
+    ```
+
+    ```bash
+    ./dev crawl -s SEEDER_EXCLUDE_ENDPOINTS='/match-detail/'
+    ```
+    This parameter may be useful in backfills where parsing the `/match-detail/` pages (which are time-consuming to process) is not desirable for dates earlier than 2 years ago, say.
+    
+2. **Incremental Crawl**
+
+  - Every day (suppose), run an incremental crawl using a start watermark that overlaps slightly with the previous crawl's stop watermark
+  - The default values of the start and stop watermark of `[today - 2 days, today + 3 days]` are intended to be sane defaults for this use case, in which a small overlap is desirable (since we upsert records and wish to capture changes after matches are played & the results are available)
+  - However, since we enable http caching with Scrapy's [`HttpCacheMiddleware`](https://docs.scrapy.org/en/latest/topics/downloader-middleware.html?highlight=httpcache#httpcache-middleware-settings), incremental crawls of pages that are *incomplete* (i.e. have matches that have not yet completed) need to disable the caching to yield new results
+  - If running on some kind of `cron`, this may be done for a suitable date range such as:
+
+```bash
+./dev crawl \
+  -s HTTPCACHE_ENABLED=0 \
+  -s SEEDER_START_WATERMARK="$(date -v -2d '+%Y-%m-%d')" \
+  -s SEEDER_STOP_WATERMARK="$(date -v +3d '+%Y-%m-%d')"
+```
+
+  - After enough time has passed for matches to complete and the remote data to be finalized, the local data may be finalized as well as the http responses cached (for faster future parsing replay or database restatement) with another pass that specifies the start and stop watermarks as suitable dates in the past. In the case of daily incremental crawls, this could look like the following:
+```bash
+./dev crawl \
+  -s HTTPCACHE_ENABLED=1 \
+  -s SEEDER_START_WATERMARK="$(date -v -6d '+%Y-%m-%d')" \
+  -s SEEDER_STOP_WATERMARK="$(date -v -3d '+%Y-%m-%d')"
+```
+
+Please note that the example invocations about that use the system `date` command are illustrative of a simple way to implement a backfill & incremental crawls on a `cron`-esque system, but using the current system time is **unsuitable for production** in cases the system running that `cron` ever goes down. The good way to manage this is to maintain each crawl's watermarks and run the new crawl with a watermark timespan built from the previous crawl's timespan (with potentially overlapping timespans depending on the crawl frequency).
 
 ## Implementation Details
 
@@ -320,7 +348,7 @@ Some of that seems unusual (e.g. the *incomplete* records), but there are a few 
 ## Related Work
 
 - [slick](https://github.com/underscorenygren/slick)
-  - This was an interesting find; it's a framework for storing `scrapy` item pipelines in relational databases using `sqlalchemy`. The code is professionallywritten and documented, but not heavily starred/forked.My guess is this was developed commercially over a not insignificant timespan, but then open-sourced in the [initial commit](https://github.com/underscorenygren/slick/commit/c90b9a1383a9afaaa80adedf6598f5180152d926).
+  - This was an interesting find; it's a framework for storing `scrapy` item pipelines in relational databases using `sqlalchemy`. The code is professionallywritten and documented, but not heavily starred/forked.My guess is this was developed commercially over a not insignificant timespan, but then open-sourced in the [initial commit](https://github.com/underscorenygren/slick/commit/c90b9a1383a9afaaa80adedf6598f5180152d926). You might be wondering, why not just use this library? Great question. Let me first thank the audience and the country for giving me this opportunity to outline my vision for the future...
 
 ## Acknowledgements
 
