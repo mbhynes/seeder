@@ -12,7 +12,7 @@ import sqlalchemy
 # Scrapy configuration settings
 # ========================================================
 
-LOG_LEVEL = logging.INFO
+LOG_LEVEL = logging.DEBUG
 BOT_NAME = 'seeder'
 
 SPIDER_MODULES = ['seeder.spiders']
@@ -24,7 +24,7 @@ ROBOTSTXT_OBEY = True
 # Configure maximum concurrent requests performed by Scrapy (default: 16)
 CONCURRENT_REQUESTS = 16
 
-DOWNLOAD_DELAY = 0.25
+DOWNLOAD_DELAY = 0
 AUTOTHROTTLE_ENABLED = True
 AUTOTHROTTLE_START_DELAY = 1.0
 AUTOTHROTTLE_MAX_DELAY = 10.0
