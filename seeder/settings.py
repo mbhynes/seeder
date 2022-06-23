@@ -53,6 +53,25 @@ ITEM_PIPELINES = {
 }
 
 # ========================================================
+# Scrapy caching settings
+# ========================================================
+# We wish to cache the response html to enable faster 
+# database restatement if errors in the parsers are detected,
+# or if new models are developed from the html pages.
+
+HTTPCACHE_ENABLED = True
+HTTPCACHE_STORAGE = 'scrapy.extensions.httpcache.DbmCacheStorage'
+HTTPCACHE_POLICY = 'scrapy.extensions.httpcache.DummyPolicy'
+HTTPCACHE_EXPIRATION_SECS = 0 # if zero, don't expire
+HTTPCACHE_DIR = 'private'
+HTTPCACHE_IGNORE_HTTP_CODES = [404]
+HTTPCACHE_IGNORE_MISSING = False
+HTTPCACHE_GZIP = True
+HTTPCACHE_ALWAYS_STORE = True
+
+
+
+# ========================================================
 # Databse configuration settings.
 # ========================================================
 

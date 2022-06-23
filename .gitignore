@@ -1,10 +1,7 @@
 .DS_Store
-__pycache__/
 *.swp
 *.pyc
 .venv/*
-private/*
-*/.ipynb_checkpoints/*
-.ipynb_checkpoints/*
 deps/*
-*.db
+private/*.db
+httpcache/*.db
