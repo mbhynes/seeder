@@ -115,7 +115,12 @@ class MatchResultParser(Parser):
         if cls == 'first time':
           record['match_time'] = col.next_element
         elif cls == 't-name':
-          record['player'] = col.find('a').attrs.get('href')
+          player_el = col.find('a')
+          # in some rare instances, a player may have no corresponding page
+          if player_el:
+            record['player'] = player_el.attrs.get('href')
+          else:
+            record['player'] = None
         elif cls == 'coursew':
           record['avg_odds_p1'] = col.next_element
         elif cls == 'course':
@@ -194,8 +199,11 @@ class MatchResultParser(Parser):
         if not key:
           continue
 
-        raw_record = _record_from_row(row, context)
-        records[key] = _coerce_record_dtypes(raw_record)
+        try:
+          raw_record = _record_from_row(row, context)
+          records[key] = _coerce_record_dtypes(raw_record)
+        except Exception as e:
+          self.logger.error(e)
 
       return records
 
