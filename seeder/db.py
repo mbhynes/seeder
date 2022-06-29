@@ -15,13 +15,17 @@ def get_engine(conn_str=None, **kwargs):
   Create a sqlalchemy engine.
   """
   engine_args = get_project_settings().get('SEEDER_SQLALCHEMY_ENGINE_ARGS', {})
-  conn_str = (
-    conn_str 
-    or os.getenv('SEEDER_DB_CONN_STR')
-    or get_project_settings().get('SEEDER_DB_CONN_STR') 
-  )
+  if conn_str:
+    logger.info("get_engine() supplied with conn_str override.")
+  elif os.getenv(SEEDER_DB_CONN_STR): 
+    logger.info(f"Variable {SEEDER_DB_CONN_STR} was set in env; using this to create engine.")
+    conn_str = os.getenv(SEEDER_DB_CONN_STR) 
+  elif get_project_settings().get(SEEDER_DB_CONN_STR):
+    logger.info(f"Using {SEEDER_DB_CONN_STR} from scrapy project settings.")
+    conn_str = get_project_settings().get(SEEDER_DB_CONN_STR)
   if not conn_str:
     raise ValueError(f"No ${SEEDER_DB_CONN_STR} is set in the settings.py or environment.")
+
   dialect = conn_str.split(':')[0]
   _args = dict(engine_args.get(dialect, {}), **kwargs)
   return sqlalchemy.create_engine(conn_str, **_args)

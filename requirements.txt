@@ -3,5 +3,6 @@ beautifulsoup4
 lxml
 sqlalchemy
 sqlalchemy-utils
+alembic
 pytest
 pytest-vcr
