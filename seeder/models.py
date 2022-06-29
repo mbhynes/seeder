@@ -316,7 +316,7 @@ class MatchOdds(BaseModel):
       kwargs['issued_by'],
       kwargs['issued_at'],
     )
-    payload['match_id'] = MatchOdds.surrogate_key(kwargs['match_number'])
+    payload['match_id'] = Match.surrogate_key(kwargs['match_number'])
     return cls(**payload)
 
   @classmethod

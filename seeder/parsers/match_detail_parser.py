@@ -151,7 +151,7 @@ class MatchDetailParser(Parser):
       items += _it
     return items
   
-  def _parse_match_items(self, response):
+  def _parse_match_items(self, response, global_context=None):
     # Add the parial match item to upsert (to get the surface & round) 
     return [MatchItem(
       match_number=coerce_int(parse_qs(urlparse(response.url).query)['id'][0]),
