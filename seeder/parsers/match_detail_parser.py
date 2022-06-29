@@ -8,7 +8,8 @@ from urllib.parse import urlparse, parse_qs
 from bs4 import BeautifulSoup
 import scrapy
 
-from seeder.items import MatchOddsItem
+from seeder.models import MatchSurface
+from seeder.items import MatchOddsItem, MatchItem
 from seeder.parsers import Parser
 from seeder.util.numeric import coerce_float, coerce_int, coerce_timedelta
 
@@ -45,7 +46,9 @@ class MatchDetailParser(Parser):
     """
     Parse a match results table into an iterable of items.
     """
-    return self._parse_moneyline_odds_items(response, global_context={})
+    odds_items = self._parse_moneyline_odds_items(response, global_context={})
+    match_items = self._parse_match_items(response, global_context={})
+    return odds_items + match_items
 
   def _parse_match_timestamp(self, response):
     try:
@@ -76,6 +79,48 @@ class MatchDetailParser(Parser):
       self.logger.error(e)
       return None
 
+
+  def _parse_match_round(self, response):
+    """
+    Parse the round text describing when the match occurred in the tournament order
+    from the html of a /match-detail/ page. The html fragment we are parsing looks like:
+    <div class="box boxBasic lGray">
+      <span class="upper">19.06.2022</span>, 14:25, <a href="...">Tournament</a>, Round, Surface
+    </div>
+    """
+    try:
+
+      text = response.selector.xpath('//*[@id="center"]/div[1]/text()').getall()[-1]
+      if not text:
+        raise ValueError(f"Could not retrieve match metadata text from {response.url}")
+      tokens = text.split(',')
+      if len(tokens) < 2:
+        raise ValueError(f"Could not parse round tokens from {response.url}")
+      return tokens[-2].strip()
+    except Exception as e:
+      self.logger.error(e)
+      return None
+
+  def _parse_match_surface(self, response):
+    """
+    Parse the surface (grass/clay/etc) from the html of a /match-detail/ page. 
+    The html fragment we are parsing looks like: 
+    <div class="box boxBasic lGray">
+      <span class="upper">19.06.2022</span>, 14:25, <a href="...">Tournament</a>, Round, Surface
+    </div>
+    """
+    try:
+      text = response.selector.xpath('//*[@id="center"]/div[1]/text()').getall()[-1]
+      if not text:
+        raise ValueError(f"Could not retrieve match metadata text from {response.url}")
+      tokens = text.strip().split(',')
+      if len(tokens) == 0:
+        raise ValueError(f"Could not parse surface tokens from {response.url}")
+      return MatchSurface.from_string(tokens[-1])
+    except Exception as e:
+      self.logger.error(e)
+      return MatchSurface.unknown
+
   def _parse_moneyline_odds_items(self, response, global_context={}):
     """
     Extract a transaction fact table of match odds issued by each available
@@ -105,6 +150,14 @@ class MatchDetailParser(Parser):
       _it = self._parse_match_odds_records(row, context=context)
       items += _it
     return items
+  
+  def _parse_match_items(self, response):
+    # Add the parial match item to upsert (to get the surface & round) 
+    return [MatchItem(
+      match_number=coerce_int(parse_qs(urlparse(response.url).query)['id'][0]),
+      match_surface=self._parse_match_surface(response),
+      match_round=self._parse_match_round(response),
+    )]
 
   def _parse_match_odds_records(self, soup, context):
     """

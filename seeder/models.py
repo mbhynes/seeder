@@ -1,6 +1,7 @@
 import datetime
 import enum
 import re
+import logging
 import uuid
 
 from urllib.parse import urlparse
@@ -12,6 +13,8 @@ from sqlalchemy_utils import UUIDType
 from sqlalchemy.orm import declarative_base, relationship
 
 from seeder.db import upsert_dict
+
+logger = logging.getLogger(__name__)
 
 
 class Base(object):
@@ -127,6 +130,28 @@ class CrawledUrl(BaseModel):
     })
  
 
+class MatchSurface(enum.Enum):
+  unknown = 0
+  hard = 1
+  clay = 2
+  grass = 3
+
+  @classmethod
+  def from_string(cls, s, on_error="warn"):
+    token = s.strip().lower()
+    if token == 'hard':
+      return cls.hard
+    if token == 'clay':
+      return cls.clay
+    if token == 'grass':
+      return cls.grass
+    msg = f"Unknown surface string provided to MatchSurface.from_string: '{s}'"
+    if on_error == "warn":
+      logger.warning(msg)
+    if on_error == "raise":
+      raise ValueError(msg)
+    return cls.unknown
+
 class PlayerType(enum.Enum):
   single = 1
   double = 2
@@ -207,6 +232,8 @@ class Match(BaseModel):
   tournament = Column(String)
   match_at = Column(DateTime, index=True)
   match_type = Column(Enum(PlayerType))
+  match_surface = Column(Enum(MatchSurface))
+  match_round = Column(String)
 
   is_win_p1 = Column(Boolean)
   is_win_p2 = Column(Boolean)
@@ -289,6 +316,7 @@ class MatchOdds(BaseModel):
       kwargs['issued_by'],
       kwargs['issued_at'],
     )
+    payload['match_id'] = MatchOdds.surrogate_key(kwargs['match_number'])
     return cls(**payload)
 
   @classmethod
