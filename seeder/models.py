@@ -139,7 +139,7 @@ class MatchSurface(enum.Enum):
   @classmethod
   def from_string(cls, s, on_error="warn"):
     token = s.strip().lower()
-    if token == 'hard':
+    if token in {'hard', 'indoors'}:
       return cls.hard
     if token == 'clay':
       return cls.clay
