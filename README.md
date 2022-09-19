@@ -103,7 +103,7 @@ The data model is specified with `sqlalchemy` models in the module [seeder.model
 
 The model is summarized in the below Entity Relational Diagram (ERD), in which the black entities are implemented and the **red** entities are aspirational models that are **not** implemented (but which would be nice to have and possible if the spider were extended).
 
-![Data Model ERD](doc/_static/erd.tennisexplorer.com.drawio.svg)
+![Data Model ERD](doc/_static/erd.tennisexplorer.com-ERD.drawio.svg)
 
 The entities in this model are as follows:
 
